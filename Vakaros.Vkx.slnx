@@ -3,7 +3,6 @@
     <Build />
   </Project>
   <Project Path="Vakaros.Vkx.Api/Vakaros.Vkx.Api.csproj" />
-  <Project Path="Vakaros.Vkx.ConsoleApplication/Vakaros.Vkx.ConsoleApplication.csproj" />
   <Project Path="Vakaros.Vkx.Parser/Vakaros.Vkx.Parser.csproj" />
   <Project Path="Vakaros.Vkx.Shared/Vakaros.Vkx.Shared.csproj" />
   <Project Path="Vakaros.Vkx.Web/Vakaros.Vkx.Web.esproj">

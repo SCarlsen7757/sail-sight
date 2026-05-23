@@ -44,7 +44,6 @@ Next.js 15 (Web)  ──HTTP/JSON──►  ASP.NET Core 10 (Api)  ──EF Core
 - **`Vakaros.Vkx.Api`** — ASP.NET Core 10 REST API. Handles ingestion, race detection, auth, and all CRUD. Migrations run automatically on startup unless `SKIP_DB_MIGRATION=true`.
 - **`Vakaros.Vkx.Shared`** — DTOs shared between the API and web (record types in `Dtos/`). Never add domain logic here.
 - **`Vakaros.Vkx.Web`** — Next.js 15 App Router frontend. SSR fetches use the `API_BASE_URL` env var; client-side fetches use the same-origin `/api/*` proxy.
-- **`Vakaros.Vkx.ConsoleApplication`** — standalone CLI to convert `.vkx` → `.json`.
 
 ### OpenAPI → TypeScript codegen pipeline
 

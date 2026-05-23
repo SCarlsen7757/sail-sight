@@ -33,7 +33,6 @@ A self-hosted sailing telemetry analysis tool for [Vakaros](https://vakaros.com/
     - [Uploading a Session](#uploading-a-session)
     - [Managing Boats and Courses](#managing-boats-and-courses)
     - [Viewing a Race](#viewing-a-race)
-    - [Console Tool](#console-tool)
   - [Projects](#projects)
   - [Roadmap](#roadmap)
   - [Contributing](#contributing)
@@ -47,7 +46,6 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 - A **parser** that decodes the VKX binary format into structured data
 - A **REST API** that ingests, stores, and serves the telemetry
 - A **Next.js UI** for interactive visualisation of sessions and races
-- A **console tool** for quick one-off conversion of `.vkx` files to JSON
 
 ---
 
@@ -89,11 +87,6 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 
 ┌──────────────────────────┐
 │  Vakaros.Vkx.Shared      │  ← DTOs shared between API and Web
-└──────────────────────────┘
-
-┌──────────────────────────┐
-│  Vakaros.Vkx.            │  ← Standalone CLI: .vkx → .json
-│  ConsoleApplication      │
 └──────────────────────────┘
 ```
 
@@ -250,18 +243,6 @@ Boats, marks, and courses can be managed via the REST API:
    - The map shows the GPS track with course marks overlaid.
    - Switch between **Historical** (full-race charts with synced cursor) and **Current** (gauge-style scrubbing) modes.
 
-### Console Tool
-
-Convert a single `.vkx` file to JSON without running any server:
-
-```bash
-cd Vakaros.Vkx.ConsoleApplication
-dotnet run
-# Enter .vkx file path: C:\path\to\session.vkx
-```
-
-The output JSON is written next to the source file.
-
 ---
 
 ## Projects
@@ -272,7 +253,6 @@ The output JSON is written next to the source file.
 | `Vakaros.Vkx.Api` | ASP.NET Core Web API | Ingestion, storage, race detection, REST endpoints |
 | `Vakaros.Vkx.Web` | Next.js 15 / React 19 / TypeScript | Interactive web UI — map, charts, gauges, playback |
 | `Vakaros.Vkx.Shared` | Class library | DTOs shared between the API and web projects |
-| `Vakaros.Vkx.ConsoleApplication` | Console app | Standalone CLI converter: `.vkx` → `.json` |
 
 ---
 
