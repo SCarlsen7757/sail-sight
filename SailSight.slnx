@@ -1,0 +1,12 @@
+<Solution>
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
+  <Project Path="SailSight.Api/SailSight.Api.csproj" />
+  <Project Path="Vakaros.Vkx.Parser/Vakaros.Vkx.Parser.csproj" />
+  <Project Path="SailSight.Shared/SailSight.Shared.csproj" />
+  <Project Path="SailSight.Web/SailSight.Web.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+</Solution>

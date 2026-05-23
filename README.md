@@ -1,10 +1,11 @@
-# Vakaros VKX Analyser
+# SailSight
 
 A self-hosted sailing telemetry analysis tool for [Vakaros](https://vakaros.com/) devices. Upload your `.vkx` log files, explore GPS tracks on an interactive map, and review race telemetry through live playback and historical charts — with multi-user accounts and team sharing.
 
 > **User management is admin-managed.** There is no public sign-up, password reset, email verification, or social login. The first admin is bootstrapped from environment variables; the admin then creates users and shares a one-time setup URL with each new user out-of-band (Slack/SMS/in-person).
 >
 > **Quickstart for self-hosters:**
+>
 > 1. Edit `docker-compose.yml` and set `Auth__Admin__Email` and `Auth__Admin__Password` (min 12 chars) on the `api` service.
 > 2. `docker compose up -d` — starts Postgres, the API, and the web app.
 > 3. Open `http://localhost:8081` and sign in as the bootstrap admin.
@@ -19,7 +20,7 @@ A self-hosted sailing telemetry analysis tool for [Vakaros](https://vakaros.com/
 
 ## Table of Contents
 
-- [Vakaros VKX Analyser](#vakaros-vkx-analyser)
+- [SailSight](#sailsight)
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
   - [Features](#features)
@@ -70,7 +71,7 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 
 ```
 ┌──────────────────────────┐      HTTP/JSON      ┌────────────────────────────┐
-│  Vakaros.Vkx.Web         │ ──────────────────► │  Vakaros.Vkx.Api           │
+│  SailSight.Web           │ ──────────────────► │  SailSight.Api             │
 │  Next.js 15 / React 19   │                     │  ASP.NET Core (.NET 10)    │
 └──────────────────────────┘                     └─────────────┬──────────────┘
                                                                │ EF Core
@@ -86,7 +87,7 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 └──────────────────────────┘                     └────────────────────────────┘
 
 ┌──────────────────────────┐
-│  Vakaros.Vkx.Shared      │  ← DTOs shared between API and Web
+│  SailSight.Shared        │  ← DTOs shared between API and Web
 └──────────────────────────┘
 ```
 
@@ -106,43 +107,18 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 
 ### API Versioning and TypeScript Codegen
 
-The REST API uses URL-segment versioning (`/api/v1/...`). Each version has a dedicated [OpenAPI](https://www.openapis.org/) document that is generated at **build time** and committed to the repository at `Vakaros.Vkx.Api/OpenApi/v1.json`.
+The REST API uses URL-segment versioning (`/api/v1/...`). Each version has a dedicated [OpenAPI](https://www.openapis.org/) document that is generated at **build time** and committed to the repository at `SailSight.Api/OpenApi/v1.json`.
 
 The build pipeline auto-generates the frontend TypeScript types from this spec:
 
 ```
 dotnet build
-  └─► GenerateOpenApiDocuments       → Vakaros.Vkx.Api/OpenApi/v1.json
-  └─► GenerateTypeScriptTypes        → Vakaros.Vkx.Web/src/lib/api-types.ts
+  └─► GenerateOpenApiDocuments       → SailSight.Api/OpenApi/v1.json
+  └─► GenerateTypeScriptTypes        → SailSight.Web/src/lib/api-types.ts
         (runs: npm run gen:api)
 ```
 
 The generated `api-types.ts` is consumed by [openapi-fetch](https://openapi-ts.dev/openapi-fetch/) in the web app, giving fully typed API calls with no manual maintenance.
-
-**Adding a new API version (v2)**
-
-1. Register the new document in `Program.cs`:
-   ```csharp
-   builder.Services.AddOpenApi("v2");
-   ```
-2. Add a new MSBuild target in `Vakaros.Vkx.Api/Vakaros.Vkx.Api.csproj`:
-   ```xml
-   <Target Name="GenerateTypeScriptTypes_v2"
-           AfterTargets="GenerateOpenApiDocuments"
-           Condition="'$(SkipTypeScriptGeneration)' != 'true'"
-           Inputs="$(MSBuildProjectDirectory)/OpenApi/v2.json"
-           Outputs="$(MSBuildProjectDirectory)/../Vakaros.Vkx.Web/src/lib/api-types-v2.ts">
-     <Exec Command="npm run gen:api:v2"
-           WorkingDirectory="$(MSBuildProjectDirectory)/../Vakaros.Vkx.Web" />
-   </Target>
-   ```
-3. Add the corresponding script to `Vakaros.Vkx.Web/package.json`:
-   ```json
-   "gen:api:v2": "openapi-typescript ../Vakaros.Vkx.Api/OpenApi/v2.json -o src/lib/api-types-v2.ts"
-   ```
-4. Build the solution — `v2.json` and `api-types-v2.ts` are generated automatically.
-
----
 
 ### Prerequisites
 
@@ -172,21 +148,21 @@ The solution is configured for a **full Docker Compose dev loop** directly from 
 
 **Start the dev environment**
 
-1. Open `Vakaros.Vkx.slnx` in Visual Studio 2022.
+1. Open `SailSight.slnx` in Visual Studio 2022.
 2. Set **docker-compose** as the startup project (it should be selected by default).
 3. Press **F5** — Visual Studio starts all three services and opens the web app in your browser.
 
 | Service | URL / Port | Notes |
-|---------|-----------|-------|
-| Web UI  | `http://localhost:8081` | Opens automatically on F5 |
-| API     | `http://localhost:8080` | |
+| --------- | ----------- | ------- |
+| Web UI | `http://localhost:8081` | Opens automatically on F5 |
+| API | `http://localhost:8080` | |
 | API docs (Scalar) | `http://localhost:8080/scalar` | |
 | PostgreSQL | `localhost:5432` | Exposed for DB tools (pgAdmin, DataGrip) |
 
 **Hot-reload behaviour**
 
 | Layer | Behaviour |
-|-------|-----------|
+| ------- | ----------- |
 | **C# API** | Visual Studio Fast Mode — changes apply via .NET Hot Reload without a full Docker rebuild. For structural changes, rebuild with **Ctrl+Shift+B** and VS pushes the new binaries automatically. |
 | **Next.js web** | True file-watch hot-reload — save any `.tsx` / `.ts` file and the browser refreshes instantly. No rebuild needed. |
 
@@ -205,7 +181,7 @@ docker compose build
 Migrations are applied automatically on API startup. To add a new migration:
 
 ```bash
-dotnet ef migrations add <MigrationName> --project Vakaros.Vkx.Api --startup-project Vakaros.Vkx.Api
+dotnet ef migrations add <MigrationName> --project SailSight.Api --startup-project SailSight.Api
 ```
 
 ---
@@ -250,9 +226,9 @@ Boats, marks, and courses can be managed via the REST API:
 | Project | Type | Purpose |
 | --- | --- | --- |
 | `Vakaros.Vkx.Parser` | Class library | Decodes the VKX binary format (v1.4) into typed C# records |
-| `Vakaros.Vkx.Api` | ASP.NET Core Web API | Ingestion, storage, race detection, REST endpoints |
-| `Vakaros.Vkx.Web` | Next.js 15 / React 19 / TypeScript | Interactive web UI — map, charts, gauges, playback |
-| `Vakaros.Vkx.Shared` | Class library | DTOs shared between the API and web projects |
+| `SailSight.Api` | ASP.NET Core Web API | Ingestion, storage, race detection, REST endpoints |
+| `SailSight.Web` | Next.js 15 / React 19 / TypeScript | Interactive web UI — map, charts, gauges, playback |
+| `SailSight.Shared` | Class library | DTOs shared between the API and web projects |
 
 ---
 

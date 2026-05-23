@@ -1,5 +1,5 @@
 name: Build API
-description: Restores and builds the Vakaros.Vkx.Api .NET project.
+description: Restores and builds the SailSight.Api .NET project.
 
 runs:
   using: composite
@@ -11,12 +11,12 @@ runs:
 
     - name: Restore dependencies
       shell: bash
-      run: dotnet restore Vakaros.Vkx.Api/Vakaros.Vkx.Api.csproj
+      run: dotnet restore SailSight.Api/SailSight.Api.csproj
 
     - name: Build
       shell: bash
       run: >
-        dotnet build Vakaros.Vkx.Api/Vakaros.Vkx.Api.csproj
+        dotnet build SailSight.Api/SailSight.Api.csproj
         --no-restore
         -c Release
         /p:SkipTypeScriptGeneration=true

@@ -9,11 +9,11 @@ services:
 
   web:
     build:
-      context: Vakaros.Vkx.Web
+      context: SailSight.Web
       dockerfile: Dockerfile.dev
     # Mount source so Next.js picks up file changes without a Docker rebuild.
     volumes:
-      - ./Vakaros.Vkx.Web:/app
+      - ./SailSight.Web:/app
       - web_node_modules:/app/node_modules
       # Isolate the Next.js build cache from the host so stale chunks never
       # shadow a fresh in-container compilation after source changes.

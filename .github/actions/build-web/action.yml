@@ -1,5 +1,5 @@
 name: Build Web
-description: Installs dependencies and builds the Vakaros.Vkx.Web Next.js project.
+description: Installs dependencies and builds the SailSight.Web Next.js project.
 
 runs:
   using: composite
@@ -9,14 +9,14 @@ runs:
       with:
         node-version: 24
         cache: npm
-        cache-dependency-path: Vakaros.Vkx.Web/package-lock.json
+        cache-dependency-path: SailSight.Web/package-lock.json
 
     - name: Install dependencies
       shell: bash
-      working-directory: Vakaros.Vkx.Web
+      working-directory: SailSight.Web
       run: npm ci
 
     - name: Build
       shell: bash
-      working-directory: Vakaros.Vkx.Web
+      working-directory: SailSight.Web
       run: npm run build

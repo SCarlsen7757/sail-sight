@@ -38,9 +38,9 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
-          context: Vakaros.Vkx.Web
-          file: Vakaros.Vkx.Web/Dockerfile
+          context: SailSight.Web
+          file: SailSight.Web/Dockerfile
           push: ${{ inputs.push }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/vakaros-vkx-web:${{ inputs.version }}
-            ${{ inputs.push && format('ghcr.io/{0}/vakaros-vkx-web:latest', github.repository_owner) || '' }}
+            ghcr.io/${{ github.repository_owner }}/sail-sight-web:${{ inputs.version }}
+            ${{ inputs.push && format('ghcr.io/{0}/sail-sight-web:latest', github.repository_owner) || '' }}

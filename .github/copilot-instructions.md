@@ -1,4 +1,4 @@
-# Copilot Instructions — Vakaros VKX Analyser
+# Copilot Instructions — SailSight
 
 ## Build & Run
 
@@ -13,13 +13,13 @@ docker compose up --build
 docker compose build web
 
 # Add an EF Core migration
-dotnet ef migrations add <MigrationName> --project Vakaros.Vkx.Api --startup-project Vakaros.Vkx.Api
+dotnet ef migrations add <MigrationName> --project SailSight.Api --startup-project SailSight.Api
 ```
 
-### Frontend (Vakaros.Vkx.Web)
+### Frontend (SailSight.Web)
 
 ```bash
-cd Vakaros.Vkx.Web
+cd SailSight.Web
 npm run dev        # dev server with hot reload
 npm run build      # production build
 npm run lint       # ESLint
@@ -40,17 +40,17 @@ Next.js 15 (Web)  ──HTTP/JSON──►  ASP.NET Core 10 (Api)  ──EF Core
                                   Vakaros.Vkx.Parser
 ```
 
-- **`Vakaros.Vkx.Parser`** — pure binary decoder for the VKX 1.4 format (little-endian, fixed-size rows keyed by a `U8` type byte). The format spec lives in `Vakaros.Vkx.Parser/vkx_format.md`.
-- **`Vakaros.Vkx.Api`** — ASP.NET Core 10 REST API. Handles ingestion, race detection, auth, and all CRUD. Migrations run automatically on startup unless `SKIP_DB_MIGRATION=true`.
-- **`Vakaros.Vkx.Shared`** — DTOs shared between the API and web (record types in `Dtos/`). Never add domain logic here.
-- **`Vakaros.Vkx.Web`** — Next.js 15 App Router frontend. SSR fetches use the `API_BASE_URL` env var; client-side fetches use the same-origin `/api/*` proxy.
+- **`Vakaros.Vkx.Parser`** — pure binary decoder for the VKX 1.4 format (little-endian, fixed-size rows keyed by a `U8` type byte). The format spec lives in `Vakaros.Vkx.Parser/vkx_format.md`. This project is intentionally kept as-is; it will be replaced by a NuGet package in the future.
+- **`SailSight.Api`** — ASP.NET Core 10 REST API. Handles ingestion, race detection, auth, and all CRUD. Migrations run automatically on startup unless `SKIP_DB_MIGRATION=true`.
+- **`SailSight.Shared`** — DTOs shared between the API and web (record types in `Dtos/`). Never add domain logic here.
+- **`SailSight.Web`** — Next.js 15 App Router frontend. SSR fetches use the `API_BASE_URL` env var; client-side fetches use the same-origin `/api/*` proxy.
 
 ### OpenAPI → TypeScript codegen pipeline
 
-`dotnet build` triggers two MSBuild targets in `Vakaros.Vkx.Api.csproj`:
+`dotnet build` triggers two MSBuild targets in `SailSight.Api.csproj`:
 
-1. `GenerateOpenApiDocuments` → `Vakaros.Vkx.Api/OpenApi/Vakaros.Vkx.Api.json`
-2. `GenerateTypeScriptTypesV1` → runs `npm run gen:api` → `Vakaros.Vkx.Web/src/lib/api-types.ts`
+1. `GenerateOpenApiDocuments` → `SailSight.Api/OpenApi/SailSight.Api.json`
+2. `GenerateTypeScriptTypesV1` → runs `npm run gen:api` → `SailSight.Web/src/lib/api-types.ts`
 
 **`api-types.ts` is generated — never edit it manually.** The API client in `src/lib/api.ts` wraps `openapi-fetch` using these types for fully-typed HTTP calls.
 
@@ -70,11 +70,11 @@ Races are detected from `RaceTimerEvent` records embedded in the VKX file (event
 
 - **URL-segment versioning**: all routes are prefixed `/api/v{version}/...` (currently `v1`). Controllers use `[ApiVersion("1.0")]` and `[Route("api/v{version:apiVersion}/...")]`.
 - **Authentication modes**: configured via `Auth__Mode` in env/config. `MultiUser` (default) uses ASP.NET Identity + cookie auth + optional PAT tokens (prefix `vkx_`). `SingleUser` skips Identity entirely and uses a synthetic system user (`AuthConstants.SystemUserId`).
-- **CSRF**: `CsrfMiddleware` requires the `X-CSRF-Token` header (value from the `vkx.csrf` cookie) on all mutating requests in `MultiUser` mode.
+- **CSRF**: `CsrfMiddleware` requires the `X-CSRF-Token` header (value from the `sailsight.csrf` cookie) on all mutating requests in `MultiUser` mode.
 - **Session visibility**: controlled by `SessionAuthorizer` / `SessionAccessHandler`. A session is visible if the user is the owner, the session is public (`IsPublic = true`), or it is shared to a team the user belongs to.
 - **`ICurrentUser`**: always inject this service in controllers to get the current `UserId`; never read `HttpContext.User` directly.
 - **Duplicate detection**: SHA-256 hash of raw file bytes, scoped per-user. Check via `VkxIngestionService.IsDuplicateAsync` before ingestion.
-- **DTOs**: defined as `record` types in `Vakaros.Vkx.Shared/Dtos/`. Map from entities inside the controller using inline projections or private static builder methods (see `SessionsController.BuildDetail`).
+- **DTOs**: defined as `record` types in `SailSight.Shared/Dtos/`. Map from entities inside the controller using inline projections or private static builder methods (see `SessionsController.BuildDetail`).
 - **`SKIP_DB_MIGRATION=true`** is set automatically during the OpenAPI generation MSBuild target to prevent EF from connecting to a database at build time.
 
 ### Frontend

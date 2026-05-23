@@ -39,8 +39,8 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: Vakaros.Vkx.Api/Dockerfile
+          file: SailSight.Api/Dockerfile
           push: ${{ inputs.push }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/vakaros-vkx-api:${{ inputs.version }}
-            ${{ inputs.push && format('ghcr.io/{0}/vakaros-vkx-api:latest', github.repository_owner) || '' }}
+            ghcr.io/${{ github.repository_owner }}/sail-sight-api:${{ inputs.version }}
+            ${{ inputs.push && format('ghcr.io/{0}/sail-sight-api:latest', github.repository_owner) || '' }}
