@@ -42,7 +42,6 @@ export default function RaceViewerPage({ params }: PageProps) {
   const [race, setRace] = useState<RaceDetail | null>(null);
   const [positions, setPositions] = useState<Position[] | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
-  const [boatLengthMeters, setBoatLengthMeters] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -65,27 +64,10 @@ export default function RaceViewerPage({ params }: PageProps) {
             : Promise.resolve(null),
         ];
 
-        // Fetch boat info for length (needed for start line rendering)
-        if (raceData.sessionId) {
-          fetches.push(
-            fetch(`/api/v1/sessions/${raceData.sessionId}`)
-              .then((r) => r.ok ? r.json() : null)
-              .then((s) => s?.boatId ? fetch(`/api/v1/boats/${s.boatId}`).then((r) => r.ok ? r.json() : null) : null)
-          );
-        }
-
-        const [posData, courseData, boatData] = await Promise.all(fetches);
+        const [posData, courseData] = await Promise.all(fetches);
         if (!alive) return;
         setPositions(posData as Position[]);
         setCourse(courseData as Course | null);
-        if (boatData) {
-          const boat = boatData as Boat;
-          const len = boat.boatClass?.length;
-          if (len != null) {
-            const lenNum = typeof len === "string" ? parseFloat(len) : len;
-            if (isFinite(lenNum) && lenNum > 0) setBoatLengthMeters(lenNum);
-          }
-        }
       })
       .catch((e) => alive && setError(`Failed to load race (${e})`));
     return () => { alive = false; };
@@ -194,7 +176,6 @@ export default function RaceViewerPage({ params }: PageProps) {
             startLine={startLine}
             playbackPosition={playbackArrow}
             windowPositions={windowPositions}
-            boatLengthMeters={boatLengthMeters}
             fill
           />
         </div>
@@ -241,7 +222,7 @@ export default function RaceViewerPage({ params }: PageProps) {
           {showCharts && (
             <>
               <TimeWindowSlicer raceStartOffset={raceStartOffset} />
-              <TelemetryPanels raceId={raceId} raceStartMs={startMs} raceStartOffset={raceStartOffset} />
+              <TelemetryPanels raceId={raceId} raceStartMs={startMs} raceStartOffset={raceStartOffset} telemetryRateHz={n(race.telemetryRateHz)} />
             </>
           )}
         </div>

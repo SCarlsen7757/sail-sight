@@ -38,15 +38,13 @@ export default function SessionViewerPage({ params }: PageProps) {
 
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [positions, setPositions] = useState<Position[] | null>(null);
-  const [boatLengthMeters, setBoatLengthMeters] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
-    Promise.all([
-      fetch(`/api/v1/sessions/${id}`).then((r) => r.ok ? r.json() : Promise.reject(r.status)),
-    ])
-      .then(async ([s]: [SessionDetail]) => {
+    fetch(`/api/v1/sessions/${id}`)
+      .then((r) => r.ok ? r.json() as Promise<SessionDetail> : Promise.reject(r.status))
+      .then(async (s) => {
         if (!alive) return;
         setSession(s);
         const firstRaceId = s.races.length > 0 ? s.races[0].id : null;
@@ -55,13 +53,6 @@ export default function SessionViewerPage({ params }: PageProps) {
           if (alive) setPositions(p ?? []);
         } else {
           setPositions([]);
-        }
-        if (s.boatId) {
-          const boat: Boat = await fetch(`/api/v1/boats/${s.boatId}`).then((r) => r.ok ? r.json() : Promise.reject(r.status));
-          if (alive && boat.boatClass?.length != null) {
-            const len = typeof boat.boatClass.length === "string" ? parseFloat(boat.boatClass.length) : boat.boatClass.length;
-            if (isFinite(len) && len > 0) setBoatLengthMeters(len);
-          }
         }
       })
       .catch((e) => alive && setError(`Failed to load session (${e})`));
@@ -143,7 +134,7 @@ export default function SessionViewerPage({ params }: PageProps) {
         {/* Left column: playback controls + map */}
         <div className="flex flex-col gap-3 lg:w-[42%] lg:shrink-0 min-h-0">
           <PlaybackControls raceStartOffset={0} duration={Math.max(duration, 0)} />
-          <RaceMap race={null} positions={positions} playbackPosition={playbackArrow} windowPositions={windowPositions} boatLengthMeters={boatLengthMeters} fill />
+          <RaceMap race={null} positions={positions} playbackPosition={playbackArrow} windowPositions={windowPositions} fill />
         </div>
 
         {/* Right column: scrollable detail panel */}
@@ -160,7 +151,7 @@ export default function SessionViewerPage({ params }: PageProps) {
           {showCharts && session.races.length > 0 && (
             <>
               <TimeWindowSlicer raceStartOffset={0} />
-              <TelemetryPanels raceId={String(session.races[0].id)} raceStartMs={startMs} raceStartOffset={0} />
+              <TelemetryPanels raceId={String(session.races[0].id)} raceStartMs={startMs} raceStartOffset={0} telemetryRateHz={n(session.telemetryRateHz)} />
             </>
           )}
         </div>

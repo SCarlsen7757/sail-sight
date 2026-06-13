@@ -3568,6 +3568,10 @@ export interface components {
             pinEnd: null | components["schemas"]["LinePositionDto"];
             boatEnd: null | components["schemas"]["LinePositionDto"];
             startAnalysis: null | components["schemas"]["StartAnalysisDto"];
+            /** Format: int32 */
+            telemetryRateHz: number | string;
+            /** Format: uuid */
+            boatId: null | string;
         };
         RaceDto: {
             /** Format: uuid */

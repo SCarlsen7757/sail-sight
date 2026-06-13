@@ -5673,7 +5673,9 @@
           "notes",
           "pinEnd",
           "boatEnd",
-          "startAnalysis"
+          "startAnalysis",
+          "telemetryRateHz",
+          "boatId"
         ],
         "type": "object",
         "properties": {
@@ -5787,6 +5789,21 @@
                 "$ref": "#/components/schemas/StartAnalysisDto"
               }
             ]
+          },
+          "telemetryRateHz": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "boatId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },

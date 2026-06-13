@@ -15,4 +15,6 @@ public record RaceDetailDto(
     string? Notes,
     LinePositionDto? PinEnd,
     LinePositionDto? BoatEnd,
-    StartAnalysisDto? StartAnalysis);
+    StartAnalysisDto? StartAnalysis,
+    int TelemetryRateHz,
+    Guid? BoatId);

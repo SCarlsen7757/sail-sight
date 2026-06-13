@@ -40,7 +40,9 @@ public class RacesController(AppDbContext db, StartAnalysisService startAnalysis
     [HttpGet("{raceId:guid}")]
     public async Task<ActionResult<RaceDetailDto>> GetById(Guid raceId, CancellationToken ct)
     {
-        var race = await db.Races.FirstOrDefaultAsync(r => r.Id == raceId, ct);
+        var race = await db.Races
+            .Include(r => r.Session)
+            .FirstOrDefaultAsync(r => r.Id == raceId, ct);
         if (race is null) return NotFound();
         if (!await sessionAuth.CanReadAsync(race.SessionId, ct)) return NotFound();
 
@@ -60,7 +62,7 @@ public class RacesController(AppDbContext db, StartAnalysisService startAnalysis
         var startAnalysisResult = await startAnalysis.ComputeAsync(race, race.SessionId, pinEnd, boatEnd, ct);
         return Ok(new RaceDetailDto(race.Id, race.SessionId, race.RaceNumber, race.CourseId, race.CountdownStartedAt, race.CountdownDurationSeconds,
             race.StartedAt, race.EndedAt, duration, race.SailedDistanceMeters, race.MaxSpeedOverGround, race.Notes,
-            pinEnd, boatEnd, startAnalysisResult));
+            pinEnd, boatEnd, startAnalysisResult, race.Session?.TelemetryRateHz ?? 1, race.Session?.BoatId));
     }
 
     [AllowAnonymous]

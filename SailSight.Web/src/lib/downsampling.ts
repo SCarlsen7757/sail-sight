@@ -24,14 +24,13 @@ export function forwardFill<T>(values: (T | null | undefined)[]): (T | null)[] {
  * Savitzky-Golay filter for linear signals (e.g. SOG, wind speed).
  *
  * - Uses derivative=0 (smooth, not differentiate).
- * - Edge-replicates both ends so the output length equals the input length.
+ * - Uses 'replicate' padding to handle edges without creating artificial spikes.
  * - Forward/backward fills NaN values before filtering so they don't corrupt
  *   the polynomial fit.
  * - Falls back to the raw values if the array is too short for the window.
  */
 export function sgSmooth(values: number[], windowSize = 11, order = 2): number[] {
   if (values.length < windowSize) return [...values];
-  const step = Math.floor(windowSize / 2);
 
   // Forward/backward fill NaN so they don't poison the fit
   const clean = [...values];
@@ -47,18 +46,12 @@ export function sgSmooth(values: number[], windowSize = 11, order = 2): number[]
     else { clean[i] = 0; }
   }
 
-  // Edge-replicate both ends so output length === input length
-  const padded = [
-    ...Array<number>(step).fill(clean[0]),
-    ...clean,
-    ...Array<number>(step).fill(clean[clean.length - 1]),
-  ];
-
-  const smoothed = SavitzkyGolay(padded, 1, {
+  const smoothed = SavitzkyGolay(clean, 1, {
     windowSize,
     polynomial: order,
     derivative: 0,
-    pad: "none",
+    pad: "pre",
+    padValue: "replicate",
   });
   return Array.from(smoothed);
 }
@@ -86,8 +79,11 @@ export interface Quaternion { w: number; x: number; y: number; z: number; }
  *    quaternions lie on the same hemisphere (eliminates double-cover spikes).
  * 2. SG-smooth each of the four components independently.
  * 3. Re-normalize each result to unit length.
+ *
+ * Uses a larger default window (21) for orientation data as it tends to be 
+ * noisier than GPS-derived metrics.
  */
-export function sgSmoothQuaternions(qs: Quaternion[], windowSize = 11, order = 2): Quaternion[] {
+export function sgSmoothQuaternions(qs: Quaternion[], windowSize = 21, order = 2): Quaternion[] {
   if (qs.length === 0) return qs;
 
   // Step 1 — fix sign consistency

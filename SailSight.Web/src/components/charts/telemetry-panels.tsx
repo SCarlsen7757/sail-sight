@@ -27,6 +27,8 @@ interface Props {
   raceStartMs: number;
   /** Countdown duration in seconds (0 for session viewer). Used to fetch pre-race telemetry. */
   raceStartOffset: number;
+  /** Logging frequency of the device in Hz. */
+  telemetryRateHz: number;
 }
 
 interface RaceTelemetry {
@@ -39,9 +41,15 @@ interface RaceTelemetry {
   shiftAngles: ShiftAngle[];
 }
 
-export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset }: Props) {
+export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset, telemetryRateHz }: Props) {
   const { prefs } = useUnitPrefs();
   const { windowStart, windowEnd, position } = useRaceViewerStore();
+
+  // Smoothing windows calculated from time horizons (seconds * Hz).
+  // We use | 1 to ensure the result is always odd, as required by Savitzky-Golay.
+  const hz = telemetryRateHz > 0 ? telemetryRateHz : 1;
+  const sogWindow = Math.max(5, Math.round(1.5 * hz) | 1);
+  const heelWindow = Math.max(5, Math.round(2.5 * hz) | 1);
 
   // Convert window offsets (seconds from data-start) to absolute ms timestamps.
   const windowStartMs = raceStartMs + (windowStart - raceStartOffset) * 1000;
@@ -67,7 +75,7 @@ export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset }: Props)
   const shiftsData = telemetry?.shiftAngles ?? [];
 
   const sogRaw = posData.map((p) => convertSpeed(n(p.speedOverGround), prefs.boatSpeed));
-  const sogSmoothed = sgSmooth(sogRaw).map((v) => Math.max(0, v));
+  const sogSmoothed = sgSmooth(sogRaw, sogWindow).map((v) => Math.max(0, v));
   const sogSeries: ChartSeries = {
     name: `SOG (${speedUnitLabel(prefs.boatSpeed)})`,
     color: COLORS.primary,
@@ -75,7 +83,7 @@ export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset }: Props)
   };
 
   const cogRaw = posData.map((p) => n(p.courseOverGround));
-  const cogSmoothed = sgSmoothAngularRad(cogRaw);
+  const cogSmoothed = sgSmoothAngularRad(cogRaw, sogWindow);
   const cogSeries: ChartSeries = {
     name: "COG (°)",
     color: COLORS.secondary,
@@ -96,7 +104,7 @@ export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset }: Props)
   const rawQuats = posData.map((p) => ({
     w: n(p.quaternionW), x: n(p.quaternionX), y: n(p.quaternionY), z: n(p.quaternionZ),
   }));
-  const smoothedQuats = sgSmoothQuaternions(rawQuats);
+  const smoothedQuats = sgSmoothQuaternions(rawQuats, heelWindow);
   const heelTrim = smoothedQuats.map((q, i) => {
     const { heelDeg, trimDeg } = quatToHeelTrim(q.w, q.x, q.y, q.z);
     return { t: new Date(posData[i].time).getTime(), heelDeg, trimDeg };
