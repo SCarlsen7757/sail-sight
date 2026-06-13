@@ -6,7 +6,7 @@ interface RaceViewerState {
   showGauges: boolean;
   showCharts: boolean;
   isPlaying: boolean;
-  speed: 0.5 | 1 | 2 | 4;
+  speed: 0.5 | 1 | 2 | 4 | 8 | 16 | 32;
   // playback position in seconds, relative to data start (negative elapsed = pre-race)
   position: number;
   // window slicer (seconds, relative to data start)
@@ -19,7 +19,7 @@ interface RaceViewerState {
   setShowGauges: (v: boolean) => void;
   setShowCharts: (v: boolean) => void;
   togglePlay: () => void;
-  setSpeed: (s: 0.5 | 1 | 2 | 4) => void;
+  setSpeed: (s: 0.5 | 1 | 2 | 4 | 8 | 16 | 32) => void;
   setPosition: (p: number) => void;
   setWindow: (start: number, end: number) => void;
   setDuration: (d: number) => void;

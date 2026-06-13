@@ -83,49 +83,34 @@ function FollowBoat({ point, followMode }: { point: L.LatLngExpression | null; f
   return null;
 }
 
-/** Canvas size of the permanent boat icon, in px. Scale is applied via CSS transform. */
+/** Fixed size of the playback boat arrow in pixels. */
+const BOAT_ICON_SIZE = 40;
+/** Canvas size of the boat icon source (viewBox). */
 const BOAT_ICON_CANVAS = 80;
 
 /**
  * A fixed, never-recreated Leaflet icon for the playback boat arrow.
- * Heading and zoom-scale are applied via direct DOM style mutation so that
- * CSS transitions fire smoothly on every update.
  */
 function makePermanentBoatIcon(): L.DivIcon {
   return L.divIcon({
     className: "",
-    html: `<div class="boat-arrow" style="width:${BOAT_ICON_CANVAS}px;height:${BOAT_ICON_CANVAS}px;transform-origin:center center;transition:transform 0.3s ease-out;transform:rotate(0deg) scale(0.15);"><svg viewBox="0 0 24 24" width="${BOAT_ICON_CANVAS}" height="${BOAT_ICON_CANVAS}"><path d="M12 2 L20 22 L12 18 L4 22 Z" fill="#FF4500" stroke="#fff" stroke-width="1"/></svg></div>`,
+    html: `<div class="boat-arrow" style="width:${BOAT_ICON_CANVAS}px;height:${BOAT_ICON_CANVAS}px;transform-origin:center center;transition:transform 0.3s ease-out;transform:rotate(0deg) scale(${BOAT_ICON_SIZE / BOAT_ICON_CANVAS});"><svg viewBox="0 0 24 24" width="${BOAT_ICON_CANVAS}" height="${BOAT_ICON_CANVAS}"><path d="M12 2 L20 22 L12 18 L4 22 Z" fill="#FF4500" stroke="#fff" stroke-width="1"/></svg></div>`,
     iconSize: [BOAT_ICON_CANVAS, BOAT_ICON_CANVAS],
     iconAnchor: [BOAT_ICON_CANVAS / 2, BOAT_ICON_CANVAS / 2],
   });
 }
 
-function metersPerPixel(zoom: number, latDeg: number): number {
-  return (156543.03392 * Math.cos((latDeg * Math.PI) / 180)) / Math.pow(2, zoom);
-}
-
-/** Pixel size for the boat icon so it approximates the real physical length. Minimum 20 px for visibility. */
-function boatIconSize(lengthMeters: number, zoom: number, latDeg: number): number {
-  const px = lengthMeters / metersPerPixel(zoom, latDeg);
-  return Math.round(Math.max(20, Math.min(80, px)));
-}
-
-/** Canvas size for start-line markers (pin + boat end). Scale is applied via CSS transform. */
+/** Fixed size for start-line markers (pin + boat end). */
+const START_MARKER_SIZE = 24;
+/** Canvas size for start-line markers source. */
 const START_MARKER_CANVAS = 48;
-
-/**
- * Pixel size for landmark markers (start line pin/boat end) based on zoom.
- * Scales from 10 px at zoom 14 up to 32 px at high zoom, floored at 10 px.
- */
-function zoomMarkerPx(zoom: number): number {
-  return Math.round(Math.max(10, Math.min(32, 10 * Math.pow(1.5, zoom - 14))));
-}
 
 function makePermanentPinIcon(): L.DivIcon {
   const c = START_MARKER_CANVAS;
+  const scale = START_MARKER_SIZE / START_MARKER_CANVAS;
   return L.divIcon({
     className: "",
-    html: `<div class="start-pin" style="width:${c}px;height:${c}px;transform-origin:center center;transition:transform 0.3s ease-out;transform:scale(0.33);display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="${c}" height="${c}"><polygon points="12,3 22,21 2,21" fill="#00CCFF" stroke="#fff" stroke-width="1"/></svg></div>`,
+    html: `<div class="start-pin" style="width:${c}px;height:${c}px;transform-origin:center center;transform:scale(${scale});display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="${c}" height="${c}"><polygon points="12,3 22,21 2,21" fill="#00CCFF" stroke="#fff" stroke-width="1"/></svg></div>`,
     iconSize: [c, c],
     iconAnchor: [c / 2, c / 2],
   });
@@ -133,13 +118,17 @@ function makePermanentPinIcon(): L.DivIcon {
 
 function makePermanentBoatEndIcon(): L.DivIcon {
   const c = START_MARKER_CANVAS;
+  const scale = START_MARKER_SIZE / START_MARKER_CANVAS;
   return L.divIcon({
     className: "",
-    html: `<div class="start-boat-end" style="width:${c}px;height:${c}px;transform-origin:center center;transition:transform 0.3s ease-out;transform:scale(0.33);display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="${c}" height="${c}"><rect x="3" y="3" width="18" height="18" rx="2" fill="#FF4500" stroke="#fff" stroke-width="1"/></svg></div>`,
+    html: `<div class="start-boat-end" style="width:${c}px;height:${c}px;transform-origin:center center;transform:scale(${scale});display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" width="${c}" height="${c}"><rect x="3" y="3" width="18" height="18" rx="2" fill="#FF4500" stroke="#fff" stroke-width="1"/></svg></div>`,
     iconSize: [c, c],
     iconAnchor: [c / 2, c / 2],
   });
 }
+
+/** Fixed radius for course marks in pixels. */
+const MARK_RADIUS = 6;
 
 export default function MapView({
   positions, race, legs, startLine, playbackPosition, preRacePositions, windowPositions,
@@ -204,11 +193,6 @@ export default function MapView({
   );
 
   const center = points[0] ?? [0, 0];
-  const centerLat = (center as [number, number])[0];
-  const boatLength = (boatLengthMeters != null && isFinite(boatLengthMeters) && boatLengthMeters > 0)
-    ? boatLengthMeters
-    : 11;
-  const iconSize = boatIconSize(boatLength, zoom, centerLat);
 
   // Stable icon instance — never recreated so CSS transitions fire on every update.
   const permanentBoatIcon = useMemo(() => makePermanentBoatIcon(), []);
@@ -220,16 +204,7 @@ export default function MapView({
   const pinMarkerRef = useRef<L.Marker | null>(null);
   const boatEndMarkerRef = useRef<L.Marker | null>(null);
 
-  // Landmark marker scale — used by start pin, start boat end.
-  const startMarkerScale = useMemo(() => zoomMarkerPx(zoom) / START_MARKER_CANVAS, [zoom]);
-
-  // Course mark radius (CircleMarker is SVG so we update via prop).
-  const markRadius = useMemo(
-    () => Math.round(Math.max(4, Math.min(10, 4 * Math.pow(1.5, zoom - 14)))),
-    [zoom]
-  );
-
-  // Update heading and scale directly on the existing DOM element so the
+  // Update heading directly on the existing DOM element so the
   // CSS transition (defined in the icon HTML) plays smoothly.
   useEffect(() => {
     const marker = boatMarkerRef.current;
@@ -238,17 +213,9 @@ export default function MapView({
     if (!el) return;
     const arrow = el.querySelector(".boat-arrow") as HTMLElement | null;
     if (!arrow) return;
-    const scale = iconSize / BOAT_ICON_CANVAS;
+    const scale = BOAT_ICON_SIZE / BOAT_ICON_CANVAS;
     arrow.style.transform = `rotate(${playbackPosition?.cog ?? 0}deg) scale(${scale})`;
-  }, [playbackPosition?.cog, iconSize]);
-
-  // Update start line marker scales via DOM mutation so CSS transitions fire.
-  useEffect(() => {
-    const pin = pinMarkerRef.current?.getElement()?.querySelector(".start-pin") as HTMLElement | null;
-    const boatEnd = boatEndMarkerRef.current?.getElement()?.querySelector(".start-boat-end") as HTMLElement | null;
-    if (pin) pin.style.transform = `scale(${startMarkerScale})`;
-    if (boatEnd) boatEnd.style.transform = `scale(${startMarkerScale})`;
-  }, [startMarkerScale]);
+  }, [playbackPosition?.cog]);
 
   return (
     <MapContainer center={center as L.LatLngExpression} zoom={14} className="h-full w-full">
@@ -299,7 +266,7 @@ export default function MapView({
         <CircleMarker
           key={i}
           center={[m.latitude, m.longitude]}
-          radius={markRadius}
+          radius={MARK_RADIUS}
           pathOptions={{ color: "#FFCC00", fillColor: "#FFCC00", fillOpacity: 0.8 }}
         >
           <Tooltip>{m.markName}</Tooltip>

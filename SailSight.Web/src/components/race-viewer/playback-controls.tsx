@@ -64,13 +64,16 @@ export function PlaybackControls({ raceStartOffset, duration }: { raceStartOffse
           </button>
           <select
             value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value) as 0.5 | 1 | 2 | 4)}
+            onChange={(e) => setSpeed(Number(e.target.value) as 0.5 | 1 | 2 | 4 | 8 | 16 | 32)}
             className="rounded border border-border-default bg-bg-base px-2 py-1 text-sm"
           >
             <option value={0.5}>0.5×</option>
             <option value={1}>1×</option>
             <option value={2}>2×</option>
             <option value={4}>4×</option>
+            <option value={8}>8×</option>
+            <option value={16}>16×</option>
+            <option value={32}>32×</option>
           </select>
         </div>
         <span className="ml-auto font-mono text-xs text-text-secondary">
