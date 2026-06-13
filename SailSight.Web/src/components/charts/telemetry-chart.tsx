@@ -70,7 +70,7 @@ export function TelemetryChart({
         type: "line",
         smooth: true,
         showSymbol: false,
-        sampling: "lttb",
+        sampling: "average",
         connectNulls: true,
         yAxisIndex: s.yAxisIndex ?? 0,
         lineStyle: { width: 1.5, color: s.color },

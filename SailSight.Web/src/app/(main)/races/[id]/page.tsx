@@ -17,6 +17,7 @@ import { n } from "@/lib/schemas";
 import { interpolatePosition } from "@/lib/track-utils";
 import { useUnitPrefs } from "@/store/settings";
 import { convertSpeed, radiansToDegrees, speedUnitLabel } from "@/lib/units";
+import { sgSmooth, sgSmoothAngularRad, sgSmoothQuaternions } from "@/lib/downsampling";
 import { useRaceViewerStore } from "@/store/race-viewer";
 
 interface PageProps { params: Promise<{ id: string }>; }
@@ -64,10 +65,37 @@ export default function RaceViewerPage({ params }: PageProps) {
             : Promise.resolve(null),
         ];
 
-        const [posData, courseData] = await Promise.all(fetches);
+        const [posData, courseData] = await Promise.all(fetches) as [Position[], Course | null];
         if (!alive) return;
-        setPositions(posData as Position[]);
-        setCourse(courseData as Course | null);
+
+        // Apply Global Smoothing at the source
+        const rawPositions = posData || [];
+        if (rawPositions.length > 5) {
+          const hz = n(raceData.telemetryRateHz) > 0 ? n(raceData.telemetryRateHz) : 1;
+          const sogWindow = Math.max(5, Math.round(1.5 * hz) | 1);
+          const orientationWindow = Math.max(5, Math.round(5.0 * hz) | 1);
+
+          const smoothedSog = sgSmooth(rawPositions.map(p => n(p.speedOverGround)), sogWindow);
+          const smoothedCog = sgSmoothAngularRad(rawPositions.map(p => n(p.courseOverGround)), sogWindow);
+          const smoothedQuats = sgSmoothQuaternions(rawPositions.map(p => ({
+            w: n(p.quaternionW), x: n(p.quaternionX), y: n(p.quaternionY), z: n(p.quaternionZ)
+          })), orientationWindow);
+
+          const smoothed = rawPositions.map((p, i) => ({
+            ...p,
+            speedOverGround: smoothedSog[i],
+            courseOverGround: smoothedCog[i],
+            quaternionW: smoothedQuats[i].w,
+            quaternionX: smoothedQuats[i].x,
+            quaternionY: smoothedQuats[i].y,
+            quaternionZ: smoothedQuats[i].z,
+          }));
+          setPositions(smoothed);
+        } else {
+          setPositions(rawPositions);
+        }
+
+        setCourse(courseData);
       })
       .catch((e) => alive && setError(`Failed to load race (${e})`));
     return () => { alive = false; };

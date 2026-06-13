@@ -46,10 +46,10 @@ export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset, telemetr
   const { windowStart, windowEnd, position } = useRaceViewerStore();
 
   // Smoothing windows calculated from time horizons (seconds * Hz).
-  // We use | 1 to ensure the result is always odd, as required by Savitzky-Golay.
   const hz = telemetryRateHz > 0 ? telemetryRateHz : 1;
   const sogWindow = Math.max(5, Math.round(1.5 * hz) | 1);
-  const heelWindow = Math.max(5, Math.round(2.5 * hz) | 1);
+  const heelWindow = Math.max(5, Math.round(5.0 * hz) | 1);
+  const windWindow = Math.max(5, Math.round(3.0 * hz) | 1);
 
   // Convert window offsets (seconds from data-start) to absolute ms timestamps.
   const windowStartMs = raceStartMs + (windowStart - raceStartOffset) * 1000;
@@ -63,8 +63,46 @@ export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset, telemetr
     const from = raceStartOffset > 0 ? `?from=${-raceStartOffset}` : "";
     fetch(`/api/v1/races/${raceId}/telemetry${from}`)
       .then((r) => r.ok ? r.json() as Promise<RaceTelemetry> : null)
-      .then((d) => setTelemetry(d ?? { positions: [], wind: [], speedThroughWater: [], depth: [], temperature: [], load: [], shiftAngles: [] }));
-  }, [raceId, raceStartOffset]);
+      .then((d) => {
+        if (!d) {
+          setTelemetry({ positions: [], wind: [], speedThroughWater: [], depth: [], temperature: [], load: [], shiftAngles: [] });
+          return;
+        }
+
+        // Apply smoothing to the telemetry set
+        const pos = d.positions || [];
+        if (pos.length > 5) {
+          const smoothedSog = sgSmooth(pos.map(p => n(p.speedOverGround)), sogWindow);
+          const smoothedCog = sgSmoothAngularRad(pos.map(p => n(p.courseOverGround)), sogWindow);
+          const smoothedQuats = sgSmoothQuaternions(pos.map(p => ({
+            w: n(p.quaternionW), x: n(p.quaternionX), y: n(p.quaternionY), z: n(p.quaternionZ)
+          })), heelWindow);
+
+          d.positions = pos.map((p, i) => ({
+            ...p,
+            speedOverGround: smoothedSog[i],
+            courseOverGround: smoothedCog[i],
+            quaternionW: smoothedQuats[i].w,
+            quaternionX: smoothedQuats[i].x,
+            quaternionY: smoothedQuats[i].y,
+            quaternionZ: smoothedQuats[i].z,
+          }));
+        }
+
+        const wind = d.wind || [];
+        if (wind.length > 5) {
+          const smoothedSpeed = sgSmooth(wind.map(w => n(w.windSpeed)), windWindow);
+          const smoothedDir = sgSmoothAngularRad(wind.map(w => n(w.windDirection)), windWindow);
+          d.wind = wind.map((w, i) => ({
+            ...w,
+            windSpeed: smoothedSpeed[i],
+            windDirection: smoothedDir[i],
+          }));
+        }
+
+        setTelemetry(d);
+      });
+  }, [raceId, raceStartOffset, sogWindow, heelWindow, windWindow]);
 
   const posData = telemetry?.positions ?? [];
   const windData = telemetry?.wind ?? [];
@@ -74,20 +112,16 @@ export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset, telemetr
   const loadData = telemetry?.load ?? [];
   const shiftsData = telemetry?.shiftAngles ?? [];
 
-  const sogRaw = posData.map((p) => convertSpeed(n(p.speedOverGround), prefs.boatSpeed));
-  const sogSmoothed = sgSmooth(sogRaw, sogWindow).map((v) => Math.max(0, v));
   const sogSeries: ChartSeries = {
     name: `SOG (${speedUnitLabel(prefs.boatSpeed)})`,
     color: COLORS.primary,
-    data: posData.map((p, i) => ({ t: new Date(p.time).getTime(), v: sogSmoothed[i] })),
+    data: posData.map((p) => ({ t: new Date(p.time).getTime(), v: convertSpeed(n(p.speedOverGround), prefs.boatSpeed) })),
   };
 
-  const cogRaw = posData.map((p) => n(p.courseOverGround));
-  const cogSmoothed = sgSmoothAngularRad(cogRaw, sogWindow);
   const cogSeries: ChartSeries = {
     name: "COG (°)",
     color: COLORS.secondary,
-    data: posData.map((p, i) => ({ t: new Date(p.time).getTime(), v: ((radiansToDegrees(cogSmoothed[i]) % 360) + 360) % 360 })),
+    data: posData.map((p) => ({ t: new Date(p.time).getTime(), v: ((radiansToDegrees(n(p.courseOverGround)) % 360) + 360) % 360 })),
   };
   const windSpeedSeries: ChartSeries = {
     name: `Wind speed (${windUnitLabel(prefs.wind)})`,
@@ -98,16 +132,12 @@ export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset, telemetr
     name: "Wind dir (°)",
     color: COLORS.yellow,
     yAxisIndex: 1,
-    data: windData.map((p) => ({ t: new Date(p.time).getTime(), v: radiansToDegrees(n(p.windDirection)) })),
+    data: windData.map((p) => ({ t: new Date(p.time).getTime(), v: ((radiansToDegrees(n(p.windDirection)) % 360) + 360) % 360 })),
   };
 
-  const rawQuats = posData.map((p) => ({
-    w: n(p.quaternionW), x: n(p.quaternionX), y: n(p.quaternionY), z: n(p.quaternionZ),
-  }));
-  const smoothedQuats = sgSmoothQuaternions(rawQuats, heelWindow);
-  const heelTrim = smoothedQuats.map((q, i) => {
-    const { heelDeg, trimDeg } = quatToHeelTrim(q.w, q.x, q.y, q.z);
-    return { t: new Date(posData[i].time).getTime(), heelDeg, trimDeg };
+  const heelTrim = posData.map((p) => {
+    const { heelDeg, trimDeg } = quatToHeelTrim(n(p.quaternionW), n(p.quaternionX), n(p.quaternionY), n(p.quaternionZ));
+    return { t: new Date(p.time).getTime(), heelDeg, trimDeg };
   });
   const heelSeries: ChartSeries = { name: "Heel (°)", color: COLORS.primary, data: heelTrim.map((p) => ({ t: p.t, v: p.heelDeg })) };
   const trimSeries: ChartSeries = { name: "Trim (°)", color: COLORS.secondary, yAxisIndex: 1, data: heelTrim.map((p) => ({ t: p.t, v: p.trimDeg })) };
