@@ -18,38 +18,63 @@ export function PointCloudBackground() {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    // Large grid configuration to easily fill wide screens
-    const cols = 85;
-    const rows = 70;
-    const spacingX = 22;
-    const spacingZ = 22;
+    const spacingX = 25;
+    const spacingZ = 25;
 
-    // Camera settings
-    const cameraDistance = 1100;
-    const focalLength = 950;
-    const maxDepth = cameraDistance + (rows * spacingZ) / 2;
+    // State variables for adaptive grid and camera, updated on mount/resize
+    let points: { x: number; z: number }[] = [];
+    let cols = 0;
+    let rows = 0;
+    let maxDepth = 0;
+    let maxRadius = 0;
+    let cameraDistance = 1000;
+    let focalLength = 1050;
+
+    // Dynamic grid calculations: scale grid density and camera projection based on screen size
+    const generateGrid = (w: number, h: number) => {
+      // Scale columns/rows cleanly. Mobile gets fewer points (high performance), 4K/wide gets extreme detail
+      cols = Math.max(45, Math.min(115, Math.floor(w / 18)));
+      rows = Math.max(40, Math.min(90, Math.floor(h / 11)));
+
+      // Shift camera parameters for beautiful portrait/landscape crop aspect ratios
+      const aspect = w / h;
+      if (aspect < 1) {
+        // Mobile / Portrait zoom
+        cameraDistance = 850;
+        focalLength = 1150;
+      } else {
+        // Desktop / Landscape
+        cameraDistance = 1000;
+        focalLength = 1050;
+      }
+
+      maxDepth = cameraDistance + (rows * spacingZ) / 2;
+      maxRadius = (cols * spacingX) / 2;
+
+      points = [];
+      for (let c = 0; c < cols; c++) {
+        for (let r = 0; r < rows; r++) {
+          const jitterX = (Math.random() - 0.5) * spacingX * 0.85;
+          const jitterZ = (Math.random() - 0.5) * spacingZ * 0.85;
+          const x = (c - cols / 2) * spacingX + jitterX;
+          const z = (r - rows / 2) * spacingZ + jitterZ;
+          points.push({ x, z });
+        }
+      }
+    };
+
+    // Initialize grid
+    generateGrid(width, height);
 
     // Track state
     let time = 0;
 
-    // Generate points array with static coordinate jitter to break the "perfect grid" alignment
-    const points: { x: number; z: number }[] = [];
-    for (let c = 0; c < cols; c++) {
-      for (let r = 0; r < rows; r++) {
-        // Add random jitter to break geometric lines, giving an organic star-field/noisy look
-        const jitterX = (Math.random() - 0.5) * spacingX * 0.85;
-        const jitterZ = (Math.random() - 0.5) * spacingZ * 0.85;
-        const x = (c - cols / 2) * spacingX + jitterX;
-        const z = (r - rows / 2) * spacingZ + jitterZ;
-        points.push({ x, z });
-      }
-    }
-
-    // Handles resizing
+    // Handles resizing and adaptive grid recomputation
     const handleResize = () => {
       if (!canvas) return;
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
+      generateGrid(width, height);
     };
     window.addEventListener("resize", handleResize);
 
@@ -108,8 +133,8 @@ export function PointCloudBackground() {
       // Sort points by depth for proper painter's algorithm rendering (back-to-front)
       const renderedPoints: { projX: number; projY: number; size: number; alpha: number; depth: number }[] = [];
 
-      // Fade out boundary (vignette)
-      const maxRadius = ((cols - 6) * spacingX) / 2;
+      // Fade out boundary (vignette) - using full bounds of expanded grid
+      const maxRadius = (cols * spacingX) / 2;
 
       for (let i = 0; i < points.length; i++) {
         const pt = points[i];
@@ -119,23 +144,31 @@ export function PointCloudBackground() {
         if (d >= maxRadius) continue; // Skip rendering completely outside radius to save CPU
 
         const radialFade = Math.max(0, 1 - d / maxRadius);
-        const radialAlpha = Math.pow(radialFade, 1.8); // Smooth falloff
+        // Exponent 0.65 keeps the dots highly populated and bright near screen edges, while preventing boxy lines
+        const radialAlpha = Math.pow(radialFade, 0.65); 
 
         // 2. Coordinate warping (fluid distortion) for a noisy wave structure
-        const warpX = pt.x + Math.sin(pt.z * 0.015 + time * 1.6) * 20;
-        const warpZ = pt.z + Math.cos(pt.x * 0.015 - time * 1.4) * 20;
+        const warpX = pt.x + Math.sin(pt.z * 0.015 + time * 1.6) * 22;
+        const warpZ = pt.z + Math.cos(pt.x * 0.015 - time * 1.4) * 22;
 
-        // 3. Layered wave equations (low-frequency macro swells)
-        const wave1 = Math.sin(warpX * 0.0045 + time * 1.2) * Math.cos(warpZ * 0.005 + time * 0.9) * 50;
-        const wave2 = Math.sin((warpX - warpZ) * 0.0025 - time * 0.5) * 25;
-        const wave3 = Math.cos((warpX + warpZ) * 0.006 + time * 0.3) * 12;
+        // 3. Multi-octave wave equations (7 layers of sines/cosines for extreme organic waviness)
+        // Octave 1: Large ocean swells
+        const swell1 = Math.sin(warpX * 0.0035 + time * 1.1) * Math.cos(warpZ * 0.004 + time * 0.9) * 55;
+        const swell2 = Math.cos((warpX - warpZ) * 0.002 - time * 0.5) * 30;
 
-        // 4. High-frequency noise layers (turbulent micro-ripples and static-like wave jitter)
-        const ripple = Math.sin(warpX * 0.03 + time * 3.8) * Math.cos(warpZ * 0.035 - time * 3.2) * 8;
-        const temporalNoise = Math.sin(warpX * 0.09 - time * 7.5) * Math.cos(warpZ * 0.1 + time * 6.5) * 3.5;
+        // Octave 2: Mid-frequency choppy waves
+        const chop1 = Math.sin(warpX * 0.009 + time * 1.6) * Math.sin(warpZ * 0.011 - time * 1.3) * 16;
+        const chop2 = Math.cos((warpX + warpZ) * 0.0075 + time * 1.0) * 12;
 
-        // Final wave height
-        const y = wave1 + wave2 + wave3 + ripple + temporalNoise;
+        // Octave 3: High-frequency ripples
+        const ripple1 = Math.sin(warpX * 0.022 + time * 2.6) * Math.cos(warpZ * 0.028 - time * 2.2) * 7;
+        const ripple2 = Math.sin((warpX - warpZ) * 0.04 - time * 3.6) * 4.5;
+
+        // Octave 4: Fine noise jitter
+        const noise = Math.cos(warpX * 0.075 + time * 5.2) * Math.sin(warpZ * 0.085 - time * 4.4) * 3;
+
+        // Final wave height combining all 7 octaves
+        const y = swell1 + swell2 + chop1 + chop2 + ripple1 + ripple2 + noise;
 
         // 3D Rotation Math
         // Yaw (around Y axis)
