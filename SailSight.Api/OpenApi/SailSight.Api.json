@@ -2015,6 +2015,54 @@
         }
       }
     },
+    "/api/v1/performance/legs": {
+      "get": {
+        "tags": [
+          "Performance"
+        ],
+        "parameters": [
+          {
+            "name": "raceId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RaceLegPerformanceDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RaceLegPerformanceDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RaceLegPerformanceDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/races": {
       "get": {
         "tags": [
@@ -4177,6 +4225,7 @@
           "gateMarkName",
           "sortOrder",
           "legName",
+          "overrideRoundingRadiusMeters",
           "legType",
           "passingSide",
           "latitude",
@@ -4223,6 +4272,15 @@
               "null",
               "string"
             ]
+          },
+          "overrideRoundingRadiusMeters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "legType": {
             "type": "string"
@@ -4271,6 +4329,7 @@
           "markId",
           "gateMarkId",
           "legName",
+          "overrideRoundingRadiusMeters",
           "legType",
           "passingSide"
         ],
@@ -4292,6 +4351,15 @@
               "null",
               "string"
             ]
+          },
+          "overrideRoundingRadiusMeters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "legType": {
             "type": "string"
@@ -4601,6 +4669,7 @@
           "activeUntil",
           "latitude",
           "longitude",
+          "defaultRoundingRadiusMeters",
           "description"
         ],
         "type": "object",
@@ -4628,6 +4697,14 @@
             "format": "double"
           },
           "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultRoundingRadiusMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -5064,6 +5141,7 @@
           "activeUntil",
           "latitude",
           "longitude",
+          "defaultRoundingRadiusMeters",
           "description"
         ],
         "type": "object",
@@ -5095,6 +5173,14 @@
             "format": "double"
           },
           "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultRoundingRadiusMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -5906,6 +5992,91 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RaceLegPerformanceDto": {
+        "required": [
+          "id",
+          "raceId",
+          "courseLegId",
+          "legName",
+          "legIndex",
+          "status",
+          "exitedPreviousMarkAt",
+          "enteredCurrentMarkAt",
+          "sailedDistanceMeters",
+          "averageSpeedOverGround",
+          "averageVelocityMadeGood",
+          "maxSpeedOverGround"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "raceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "courseLegId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "legName": {
+            "type": "string"
+          },
+          "legIndex": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          },
+          "exitedPreviousMarkAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "enteredCurrentMarkAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sailedDistanceMeters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "averageSpeedOverGround": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "float"
+          },
+          "averageVelocityMadeGood": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "float"
+          },
+          "maxSpeedOverGround": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "float"
           }
         }
       },
@@ -6807,6 +6978,7 @@
           "activeUntil",
           "latitude",
           "longitude",
+          "defaultRoundingRadiusMeters",
           "description"
         ],
         "type": "object",
@@ -6834,6 +7006,14 @@
             "format": "double"
           },
           "longitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "defaultRoundingRadiusMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -6997,6 +7177,9 @@
     },
     {
       "name": "Me"
+    },
+    {
+      "name": "Performance"
     },
     {
       "name": "Races"

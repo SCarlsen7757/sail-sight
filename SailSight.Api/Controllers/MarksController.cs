@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using SailSight.Api.Auth;
 using SailSight.Api.Data;
 using SailSight.Api.Models.Entities;
+using SailSight.Api.Services;
 using SailSight.Shared.Dtos.Marks;
 
 namespace SailSight.Api.Controllers;
@@ -13,7 +14,7 @@ namespace SailSight.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class MarksController(AppDbContext db, ICurrentUser currentUser) : ControllerBase
+public class MarksController(AppDbContext db, ICurrentUser currentUser, RaceLegAnalysisService legAnalysis) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<MarkDto>>> GetAll([FromQuery] DateOnly? activeOn, [FromQuery] bool? activeOnly, CancellationToken ct)
@@ -35,7 +36,7 @@ public class MarksController(AppDbContext db, ICurrentUser currentUser) : Contro
 
         var marks = await query
             .OrderBy(m => m.ActiveFrom).ThenBy(m => m.Name)
-            .Select(m => new MarkDto(m.Id, m.Name, m.ActiveFrom, m.ActiveUntil, m.Latitude, m.Longitude, m.Description))
+            .Select(m => new MarkDto(m.Id, m.Name, m.ActiveFrom, m.ActiveUntil, m.Latitude, m.Longitude, m.DefaultRoundingRadiusMeters, m.Description))
             .ToListAsync(ct);
         return Ok(marks);
     }
@@ -46,7 +47,7 @@ public class MarksController(AppDbContext db, ICurrentUser currentUser) : Contro
         var userId = currentUser.UserId;
         var mark = await db.Marks.FirstOrDefaultAsync(m => m.Id == id && m.OwnerUserId == userId, ct);
         if (mark is null) return NotFound();
-        return Ok(new MarkDto(mark.Id, mark.Name, mark.ActiveFrom, mark.ActiveUntil, mark.Latitude, mark.Longitude, mark.Description));
+        return Ok(new MarkDto(mark.Id, mark.Name, mark.ActiveFrom, mark.ActiveUntil, mark.Latitude, mark.Longitude, mark.DefaultRoundingRadiusMeters, mark.Description));
     }
 
     [HttpPost]
@@ -60,11 +61,12 @@ public class MarksController(AppDbContext db, ICurrentUser currentUser) : Contro
             ActiveUntil = request.ActiveUntil,
             Latitude = request.Latitude,
             Longitude = request.Longitude,
+            DefaultRoundingRadiusMeters = request.DefaultRoundingRadiusMeters,
             Description = request.Description,
         };
         db.Marks.Add(mark);
         await db.SaveChangesAsync(ct);
-        var dto = new MarkDto(mark.Id, mark.Name, mark.ActiveFrom, mark.ActiveUntil, mark.Latitude, mark.Longitude, mark.Description);
+        var dto = new MarkDto(mark.Id, mark.Name, mark.ActiveFrom, mark.ActiveUntil, mark.Latitude, mark.Longitude, mark.DefaultRoundingRadiusMeters, mark.Description);
         return CreatedAtAction(nameof(GetById), new { id = mark.Id }, dto);
     }
 
@@ -74,14 +76,26 @@ public class MarksController(AppDbContext db, ICurrentUser currentUser) : Contro
         var userId = currentUser.UserId;
         var mark = await db.Marks.FirstOrDefaultAsync(m => m.Id == id && m.OwnerUserId == userId, ct);
         if (mark is null) return NotFound();
+
+        bool needsReanalysis = mark.Latitude != request.Latitude || 
+                               mark.Longitude != request.Longitude || 
+                               mark.DefaultRoundingRadiusMeters != request.DefaultRoundingRadiusMeters;
+
         mark.Name = request.Name;
         mark.ActiveFrom = request.ActiveFrom;
         mark.ActiveUntil = request.ActiveUntil;
         mark.Latitude = request.Latitude;
         mark.Longitude = request.Longitude;
+        mark.DefaultRoundingRadiusMeters = request.DefaultRoundingRadiusMeters;
         mark.Description = request.Description;
         await db.SaveChangesAsync(ct);
-        return Ok(new MarkDto(mark.Id, mark.Name, mark.ActiveFrom, mark.ActiveUntil, mark.Latitude, mark.Longitude, mark.Description));
+
+        if (needsReanalysis)
+        {
+            await legAnalysis.ReanalyzeRacesByMarkAsync(mark.Id, ct);
+        }
+
+        return Ok(new MarkDto(mark.Id, mark.Name, mark.ActiveFrom, mark.ActiveUntil, mark.Latitude, mark.Longitude, mark.DefaultRoundingRadiusMeters, mark.Description));
     }
 
     [HttpDelete("{id:guid}")]

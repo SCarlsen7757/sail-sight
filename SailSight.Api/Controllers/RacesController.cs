@@ -15,7 +15,7 @@ namespace SailSight.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v{version:apiVersion}/races")]
-public class RacesController(AppDbContext db, StartAnalysisService startAnalysis, SessionAuthorizer sessionAuth) : ControllerBase
+public class RacesController(AppDbContext db, StartAnalysisService startAnalysis, RaceLegAnalysisService legAnalysis, SessionAuthorizer sessionAuth) : ControllerBase
 {
     [AllowAnonymous]
     [HttpGet]
@@ -266,7 +266,14 @@ public class RacesController(AppDbContext db, StartAnalysisService startAnalysis
         if (!await sessionAuth.CanWriteAsync(race.SessionId, ct)) return NotFound();
 
         if (request.CourseId.HasValue)
+        {
             race.CourseId = request.CourseId.Value == Guid.Empty ? null : request.CourseId.Value;
+            if (race.CourseId != null)
+            {
+                // Trigger leg analysis
+                await legAnalysis.AnalyzeRaceAsync(race.Id, ct);
+            }
+        }
         if (request.Notes is not null)
             race.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes;
         await db.SaveChangesAsync(ct);

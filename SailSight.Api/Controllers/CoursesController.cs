@@ -6,6 +6,7 @@ using SailSight.Api.Auth;
 using SailSight.Api.Data;
 using SailSight.Api.Helpers;
 using SailSight.Api.Models.Entities;
+using SailSight.Api.Services;
 using SailSight.Shared.Dtos.Courses;
 
 namespace SailSight.Api.Controllers;
@@ -14,7 +15,7 @@ namespace SailSight.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class CoursesController(AppDbContext db, ICurrentUser currentUser) : ControllerBase
+public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLegAnalysisService legAnalysis) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CourseSummaryDto>>> GetAll([FromQuery] int? year, CancellationToken ct)
@@ -129,6 +130,8 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser) : Cont
         }
         await db.SaveChangesAsync(ct);
 
+        await legAnalysis.ReanalyzeRacesByCourseAsync(course.Id, ct);
+
         var updated = await db.Courses
             .Include(c => c.Legs.OrderBy(l => l.SortOrder))
                 .ThenInclude(l => l.Mark)
@@ -181,6 +184,7 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser) : Cont
             GateMarkId = legType == LegType.Gate ? leg.GateMarkId : null,
             SortOrder = sortOrder,
             LegName = leg.LegName,
+            OverrideRoundingRadiusMeters = leg.OverrideRoundingRadiusMeters,
             LegType = legType,
             PassingSide = ParsePassingSide(leg.PassingSide),
         };
@@ -214,7 +218,7 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser) : Cont
             [.. orderedLegs.Select(l => new CourseLegDto(
                 l.Id, l.MarkId, l.Mark.Name,
                 l.GateMarkId, l.GateMark?.Name,
-                l.SortOrder, l.LegName,
+                l.SortOrder, l.LegName, l.OverrideRoundingRadiusMeters,
                 l.LegType.ToString(), l.PassingSide.ToString(),
                 l.Mark.Latitude, l.Mark.Longitude,
                 l.GateMark?.Latitude, l.GateMark?.Longitude))]

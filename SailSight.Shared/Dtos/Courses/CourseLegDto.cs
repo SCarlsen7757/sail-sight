@@ -8,6 +8,7 @@ public record CourseLegDto(
     string? GateMarkName,
     int SortOrder,
     string? LegName,
+    double? OverrideRoundingRadiusMeters,
     string LegType,
     string PassingSide,
     double Latitude,

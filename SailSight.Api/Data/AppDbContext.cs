@@ -20,6 +20,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<Race> Races => Set<Race>();
     public DbSet<RaceSummaryReport> RaceSummaryReports => Set<RaceSummaryReport>();
+    public DbSet<RaceLegPerformance> RaceLegPerformances => Set<RaceLegPerformance>();
 
     // Multi-user / teams
     public DbSet<Team> Teams => Set<Team>();
@@ -122,6 +123,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(m => m.ActiveUntil).HasColumnName("active_until");
             e.Property(m => m.Latitude).HasColumnName("latitude");
             e.Property(m => m.Longitude).HasColumnName("longitude");
+            e.Property(m => m.DefaultRoundingRadiusMeters).HasColumnName("default_rounding_radius_meters");
             e.Property(m => m.Description).HasColumnName("description");
             e.HasIndex(m => new { m.OwnerUserId, m.Name, m.ActiveFrom }).IsUnique();
         });
@@ -160,11 +162,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(cl => cl.GateMarkId).HasColumnName("gate_mark_id");
             e.Property(cl => cl.SortOrder).HasColumnName("sort_order");
             e.Property(cl => cl.LegName).HasColumnName("leg_name");
+            e.Property(cl => cl.OverrideRoundingRadiusMeters).HasColumnName("override_rounding_radius_meters");
             e.Property(cl => cl.LegType).HasColumnName("leg_type").HasConversion<string>();
             e.Property(cl => cl.PassingSide).HasColumnName("passing_side").HasConversion<string>();
             e.HasOne(cl => cl.Course).WithMany(c => c.Legs).HasForeignKey(cl => cl.CourseId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(cl => cl.Mark).WithMany(m => m.CourseLegs).HasForeignKey(cl => cl.MarkId);
+            e.HasOne(cl => cl.Mark).WithMany(m => m.CourseLegs).HasForeignKey(cl => cl.MarkId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(cl => cl.GateMark).WithMany().HasForeignKey(cl => cl.GateMarkId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(cl => new { cl.CourseId, cl.SortOrder }).IsUnique();
         });
 
         // ── Sessions ────────────────────────────────────────────────────────
@@ -209,9 +213,31 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(r => r.SailedDistanceMeters).HasColumnName("sailed_distance_meters");
             e.Property(r => r.MaxSpeedOverGround).HasColumnName("max_speed_over_ground");
             e.Property(r => r.Notes).HasColumnName("notes");
+            e.Property(r => r.AnalysisStatus).HasColumnName("analysis_status").HasConversion<string>();
             e.HasIndex(r => new { r.SessionId, r.RaceNumber }).IsUnique();
             e.HasOne(r => r.Session).WithMany(s => s.Races).HasForeignKey(r => r.SessionId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(r => r.Course).WithMany(c => c.Races).HasForeignKey(r => r.CourseId).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ── Race Leg Performance ─────────────────────────────────────────
+        modelBuilder.Entity<RaceLegPerformance>(e =>
+        {
+            e.ToTable("race_leg_performances");
+            e.HasKey(p => p.Id);
+            e.Property(p => p.Id).HasColumnName("id").ValueGeneratedNever();
+            e.Property(p => p.RaceId).HasColumnName("race_id");
+            e.Property(p => p.CourseLegId).HasColumnName("course_leg_id");
+            e.Property(p => p.LegIndex).HasColumnName("leg_index");
+            e.Property(p => p.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(p => p.ExitedPreviousMarkAt).HasColumnName("exited_previous_mark_at");
+            e.Property(p => p.EnteredCurrentMarkAt).HasColumnName("entered_current_mark_at");
+            e.Property(p => p.SailedDistanceMeters).HasColumnName("sailed_distance_meters");
+            e.Property(p => p.AverageSpeedOverGround).HasColumnName("average_speed_over_ground");
+            e.Property(p => p.AverageVelocityMadeGood).HasColumnName("average_velocity_made_good");
+            e.Property(p => p.MaxSpeedOverGround).HasColumnName("max_speed_over_ground");
+            e.HasOne(p => p.Race).WithMany(r => r.LegPerformances).HasForeignKey(p => p.RaceId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(p => p.CourseLeg).WithMany().HasForeignKey(p => p.CourseLegId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(p => new { p.RaceId, p.LegIndex }).IsUnique();
         });
 
         // ── Race Summary Reports ─────────────────────────────────────────

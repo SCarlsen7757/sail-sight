@@ -1814,6 +1814,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/performance/legs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    raceId?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RaceLegPerformanceDto"][];
+                        "application/json": components["schemas"]["RaceLegPerformanceDto"][];
+                        "text/json": components["schemas"]["RaceLegPerformanceDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/races": {
         parameters: {
             query?: never;
@@ -3196,6 +3235,8 @@ export interface components {
             /** Format: int32 */
             sortOrder: number | string;
             legName: null | string;
+            /** Format: double */
+            overrideRoundingRadiusMeters: null | number | string;
             legType: string;
             passingSide: string;
             /** Format: double */
@@ -3213,6 +3254,8 @@ export interface components {
             /** Format: uuid */
             gateMarkId: null | string;
             legName: null | string;
+            /** Format: double */
+            overrideRoundingRadiusMeters: null | number | string;
             legType: string;
             passingSide: string;
         };
@@ -3290,6 +3333,8 @@ export interface components {
             latitude: number | string;
             /** Format: double */
             longitude: number | string;
+            /** Format: double */
+            defaultRoundingRadiusMeters: number | string;
             description: null | string;
         };
         CreatePatRequest: {
@@ -3410,6 +3455,8 @@ export interface components {
             latitude: number | string;
             /** Format: double */
             longitude: number | string;
+            /** Format: double */
+            defaultRoundingRadiusMeters: number | string;
             description: null | string;
         };
         NotificationCountsDto: {
@@ -3596,6 +3643,30 @@ export interface components {
             /** Format: float */
             maxSpeedOverGround: number | string;
             notes: null | string;
+        };
+        RaceLegPerformanceDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            raceId: string;
+            /** Format: uuid */
+            courseLegId: string;
+            legName: string;
+            /** Format: int32 */
+            legIndex: number | string;
+            status: string;
+            /** Format: date-time */
+            exitedPreviousMarkAt: string;
+            /** Format: date-time */
+            enteredCurrentMarkAt: string;
+            /** Format: double */
+            sailedDistanceMeters: number | string;
+            /** Format: float */
+            averageSpeedOverGround: number | string;
+            /** Format: float */
+            averageVelocityMadeGood: number | string;
+            /** Format: float */
+            maxSpeedOverGround: number | string;
         };
         RaceSummaryDto: {
             content: string;
@@ -3833,6 +3904,8 @@ export interface components {
             latitude: number | string;
             /** Format: double */
             longitude: number | string;
+            /** Format: double */
+            defaultRoundingRadiusMeters: number | string;
             description: null | string;
         };
         UpdateMemberRoleRequest: {

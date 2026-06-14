@@ -9,6 +9,7 @@ public class Mark
     public DateOnly? ActiveUntil { get; set; }
     public double Latitude { get; set; }
     public double Longitude { get; set; }
+    public double DefaultRoundingRadiusMeters { get; set; } = 20.0;
     public string? Description { get; set; }
 
     public ICollection<CourseLeg> CourseLegs { get; set; } = [];

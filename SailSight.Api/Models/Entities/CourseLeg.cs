@@ -8,6 +8,7 @@ public class CourseLeg
     public Guid? GateMarkId { get; set; }
     public int SortOrder { get; set; }
     public string? LegName { get; set; }
+    public double? OverrideRoundingRadiusMeters { get; set; }
     public LegType LegType { get; set; } = LegType.Mark;
     public PassingSide PassingSide { get; set; } = PassingSide.Port;
 

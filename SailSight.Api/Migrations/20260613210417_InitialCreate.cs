@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -90,6 +90,7 @@ namespace SailSight.Api.Migrations
                     active_until = table.Column<DateOnly>(type: "date", nullable: true),
                     latitude = table.Column<double>(type: "double precision", nullable: false),
                     longitude = table.Column<double>(type: "double precision", nullable: false),
+                    default_rounding_radius_meters = table.Column<double>(type: "double precision", nullable: false),
                     description = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
@@ -441,6 +442,7 @@ namespace SailSight.Api.Migrations
                     gate_mark_id = table.Column<Guid>(type: "uuid", nullable: true),
                     sort_order = table.Column<int>(type: "integer", nullable: false),
                     leg_name = table.Column<string>(type: "text", nullable: true),
+                    override_rounding_radius_meters = table.Column<double>(type: "double precision", nullable: true),
                     leg_type = table.Column<string>(type: "text", nullable: false),
                     passing_side = table.Column<string>(type: "text", nullable: false)
                 },
@@ -646,7 +648,8 @@ namespace SailSight.Api.Migrations
                     ended_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     sailed_distance_meters = table.Column<double>(type: "double precision", nullable: false),
                     max_speed_over_ground = table.Column<float>(type: "real", nullable: false),
-                    notes = table.Column<string>(type: "text", nullable: true)
+                    notes = table.Column<string>(type: "text", nullable: true),
+                    analysis_status = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -767,6 +770,39 @@ namespace SailSight.Api.Migrations
                         name: "FK_wind_readings_sessions_session_id",
                         column: x => x.session_id,
                         principalTable: "sessions",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "race_leg_performances",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    race_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    course_leg_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    leg_index = table.Column<int>(type: "integer", nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
+                    exited_previous_mark_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    entered_current_mark_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    sailed_distance_meters = table.Column<double>(type: "double precision", nullable: false),
+                    average_speed_over_ground = table.Column<float>(type: "real", nullable: false),
+                    average_velocity_made_good = table.Column<float>(type: "real", nullable: false),
+                    max_speed_over_ground = table.Column<float>(type: "real", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_race_leg_performances", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_race_leg_performances_course_legs_course_leg_id",
+                        column: x => x.course_leg_id,
+                        principalTable: "course_legs",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_race_leg_performances_races_race_id",
+                        column: x => x.race_id,
+                        principalTable: "races",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -919,6 +955,16 @@ namespace SailSight.Api.Migrations
                 column: "session_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_race_leg_performances_course_leg_id",
+                table: "race_leg_performances",
+                column: "course_leg_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_race_leg_performances_race_id",
+                table: "race_leg_performances",
+                column: "race_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_race_summary_reports_race_id",
                 table: "race_summary_reports",
                 column: "race_id",
@@ -1060,9 +1106,6 @@ namespace SailSight.Api.Migrations
                 name: "boat_class_requests");
 
             migrationBuilder.DropTable(
-                name: "course_legs");
-
-            migrationBuilder.DropTable(
                 name: "DataProtectionKeys");
 
             migrationBuilder.DropTable(
@@ -1085,6 +1128,9 @@ namespace SailSight.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "positions");
+
+            migrationBuilder.DropTable(
+                name: "race_leg_performances");
 
             migrationBuilder.DropTable(
                 name: "race_summary_reports");
@@ -1127,6 +1173,9 @@ namespace SailSight.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "wind_readings");
+
+            migrationBuilder.DropTable(
+                name: "course_legs");
 
             migrationBuilder.DropTable(
                 name: "races");
