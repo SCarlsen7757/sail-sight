@@ -20,4 +20,5 @@ public record PublicCourseLegDto(
     double Lat1,
     double Lng1,
     double? Lat2,
-    double? Lng2);
+    double? Lng2,
+    double RadiusMeters);

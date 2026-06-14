@@ -201,7 +201,8 @@ public class SessionsController(
             l.LegType.ToString(),
             l.PassingSide.ToString(),
             l.Mark.Latitude, l.Mark.Longitude,
-            l.GateMark?.Latitude, l.GateMark?.Longitude
+            l.GateMark?.Latitude, l.GateMark?.Longitude,
+            l.OverrideRoundingRadiusMeters ?? l.Mark.DefaultRoundingRadiusMeters
         )).ToList();
 
         var dto = new PublicCourseLayoutDto(

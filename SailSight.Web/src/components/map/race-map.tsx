@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import type { Position, RaceDetail } from "@/lib/schemas";
+import type { Position, RaceDetail, CourseLeg } from "@/lib/schemas";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { Crosshair, Maximize2 } from "lucide-react";
 
@@ -14,7 +14,7 @@ export type TrackMode = "flat" | "heatmap";
 export interface RaceMapProps {
   positions: Position[] | null;
   race: RaceDetail | null;
-  legs?: { latitude: number; longitude: number; markName: string }[];
+  legs?: CourseLeg[];
   startLine?: { pin?: { lat: number; lon: number }; boat?: { lat: number; lon: number } };
   playbackPosition?: { lat: number; lon: number; cog: number } | null;
   preRacePositions?: Position[] | null;

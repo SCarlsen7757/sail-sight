@@ -4231,7 +4231,8 @@
           "latitude",
           "longitude",
           "gateLatitude",
-          "gateLongitude"
+          "gateLongitude",
+          "markDefaultRoundingRadiusMeters"
         ],
         "type": "object",
         "properties": {
@@ -4317,6 +4318,14 @@
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "markDefaultRoundingRadiusMeters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
               "number",
               "string"
             ],
@@ -5689,7 +5698,8 @@
           "lat1",
           "lng1",
           "lat2",
-          "lng2"
+          "lng2",
+          "radiusMeters"
         ],
         "type": "object",
         "properties": {
@@ -5736,6 +5746,14 @@
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "radiusMeters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
               "number",
               "string"
             ],

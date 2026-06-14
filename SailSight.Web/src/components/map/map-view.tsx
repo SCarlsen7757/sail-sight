@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Tooltip, useMap, useMapEvents } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState, Fragment } from "react";
+import { MapContainer, TileLayer, Polyline, CircleMarker, Marker, Tooltip, useMap, useMapEvents, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useTheme } from "next-themes";
@@ -262,16 +262,77 @@ export default function MapView({
         <Polyline positions={windowPoints} pathOptions={{ color: "#FF8C00", weight: 9, opacity: 0.35 }} />
       )}
 
-      {legs?.map((m, i) => (
-        <CircleMarker
-          key={i}
-          center={[m.latitude, m.longitude]}
-          radius={MARK_RADIUS}
-          pathOptions={{ color: "#FFCC00", fillColor: "#FFCC00", fillOpacity: 0.8 }}
-        >
-          <Tooltip>{m.markName}</Tooltip>
-        </CircleMarker>
-      ))}
+      {legs?.map((m, i) => {
+        const lat = n(m.latitude);
+        const lon = n(m.longitude);
+        const isGate = m.legType === "Gate";
+
+        if (isGate) {
+          const gateLat = m.gateLatitude != null ? n(m.gateLatitude) : null;
+          const gateLon = m.gateLongitude != null ? n(m.gateLongitude) : null;
+          const hasGateMark = gateLat != null && gateLon != null;
+
+          return (
+            <Fragment key={i}>
+              <CircleMarker
+                center={[lat, lon]}
+                radius={MARK_RADIUS}
+                pathOptions={{ color: "#FFCC00", fillColor: "#FFCC00", fillOpacity: 0.8 }}
+              >
+                <Tooltip>{`${m.markName} (Gate Port Buoy)`}</Tooltip>
+              </CircleMarker>
+
+              {hasGateMark && (
+                <Fragment>
+                  <CircleMarker
+                    center={[gateLat, gateLon]}
+                    radius={MARK_RADIUS}
+                    pathOptions={{ color: "#FFCC00", fillColor: "#FFCC00", fillOpacity: 0.8 }}
+                  >
+                    <Tooltip>{m.gateMarkName ?? `${m.markName} (Gate Starboard Buoy)`}</Tooltip>
+                  </CircleMarker>
+                  <Polyline
+                    positions={[[lat, lon], [gateLat, gateLon]]}
+                    pathOptions={{ color: "#FFCC00", weight: 2, dashArray: "4,4", opacity: 0.8 }}
+                  />
+                </Fragment>
+              )}
+            </Fragment>
+          );
+        } else {
+          const radius = m.overrideRoundingRadiusMeters != null ? n(m.overrideRoundingRadiusMeters) : n(m.markDefaultRoundingRadiusMeters);
+          const hasRadius = !isNaN(radius) && radius > 0;
+          const sideText = m.passingSide ? `Round to ${m.passingSide}` : "Round";
+          const radiusText = hasRadius ? `Radius: ${radius.toFixed(0)}m` : "";
+          const tooltipText = `${m.markName} (${sideText}${radiusText ? `, ${radiusText}` : ""})`;
+
+          return (
+            <Fragment key={i}>
+              <CircleMarker
+                center={[lat, lon]}
+                radius={MARK_RADIUS}
+                pathOptions={{ color: "#FFCC00", fillColor: "#FFCC00", fillOpacity: 0.8 }}
+              >
+                <Tooltip>{tooltipText}</Tooltip>
+              </CircleMarker>
+
+              {hasRadius && (
+                <Circle
+                  center={[lat, lon]}
+                  radius={radius}
+                  pathOptions={{
+                    color: m.passingSide === "Starboard" ? "#10B981" : "#EF4444",
+                    fillColor: m.passingSide === "Starboard" ? "#10B981" : "#EF4444",
+                    fillOpacity: 0.1,
+                    dashArray: "5,5",
+                    weight: 1.5,
+                  }}
+                />
+              )}
+            </Fragment>
+          );
+        }
+      })}
 
       {startLine?.pin && startLine?.boat && (
         <Polyline

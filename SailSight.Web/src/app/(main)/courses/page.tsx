@@ -14,7 +14,14 @@ import { ThreeDotMenu } from "@/components/ui/three-dot-menu";
 import { useToast } from "@/hooks/useToast";
 import { Plus, X, ArrowUp, ArrowDown } from "lucide-react";
 
-interface Leg { markId: string; legName: string; }
+interface Leg {
+  markId: string;
+  gateMarkId: string;
+  legName: string;
+  overrideRoundingRadiusMeters: string;
+  legType: string;
+  passingSide: string;
+}
 interface Draft { name: string; year: string; description: string; legs: Leg[]; }
 
 const emptyDraft = (): Draft => ({ name: "", year: String(new Date().getFullYear()), description: "", legs: [] });
@@ -65,7 +72,14 @@ export default function CoursesPage() {
           name: full.name,
           year: String(n(full.year)),
           description: full.description ?? "",
-          legs: full.legs.map((l) => ({ markId: String(l.markId), legName: l.legName ?? "" })),
+          legs: full.legs.map((l) => ({
+            markId: String(l.markId),
+            gateMarkId: l.gateMarkId ? String(l.gateMarkId) : "",
+            legName: l.legName ?? "",
+            overrideRoundingRadiusMeters: l.overrideRoundingRadiusMeters != null ? String(l.overrideRoundingRadiusMeters) : "",
+            legType: l.legType ?? "Mark",
+            passingSide: l.passingSide ?? "Port",
+          })),
         });
       }
     } else {
@@ -84,11 +98,25 @@ export default function CoursesPage() {
 
   const save = async () => {
     if (!draft.name) { toast.push({ kind: "warning", message: "Name required." }); return; }
+    const invalidGate = draft.legs.find((l) => l.legType === "Gate" && (!l.markId || !l.gateMarkId));
+    if (invalidGate) {
+      toast.push({ kind: "warning", message: "Gate legs require selecting both marks." });
+      return;
+    }
     const body = {
       name: draft.name,
       year: Number(draft.year),
       description: draft.description || null,
-      legs: draft.legs.filter((l) => l.markId).map((l) => ({ markId: l.markId, legName: l.legName || null })),
+      legs: draft.legs
+        .filter((l) => l.markId)
+        .map((l) => ({
+          markId: l.markId,
+          gateMarkId: l.legType === "Gate" && l.gateMarkId ? l.gateMarkId : null,
+          legName: l.legName || null,
+          overrideRoundingRadiusMeters: l.overrideRoundingRadiusMeters ? Number(l.overrideRoundingRadiusMeters) : null,
+          legType: l.legType,
+          passingSide: l.legType === "Gate" ? "Port" : l.passingSide,
+        })),
     };
     const isNew = editingId === "new";
     const url = isNew ? "/api/v1/courses" : `/api/v1/courses/${editingId}`;
@@ -168,20 +196,130 @@ export default function CoursesPage() {
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm text-text-secondary">Legs</span>
-                <Button variant="ghost" onClick={() => setDraft({ ...draft, legs: [...draft.legs, { markId: "", legName: "" }] })}><Plus className="h-4 w-4" /> Add leg</Button>
+                <Button variant="ghost" onClick={() => setDraft({ ...draft, legs: [...draft.legs, { markId: "", gateMarkId: "", legName: "", overrideRoundingRadiusMeters: "", legType: "Mark", passingSide: "Port" }] })}><Plus className="h-4 w-4" /> Add leg</Button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {draft.legs.map((l, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="w-5 text-center text-xs text-text-secondary">{i + 1}</span>
-                    <Select value={l.markId} onChange={(e) => { const legs = [...draft.legs]; legs[i] = { ...legs[i], markId: e.target.value }; setDraft({ ...draft, legs }); }}>
-                      <option value="">— Select mark —</option>
-                      {marks.map((m) => <option key={String(m.id)} value={String(m.id)}>{m.name}</option>)}
-                    </Select>
-                    <Input placeholder="Leg name" value={l.legName} onChange={(e) => { const legs = [...draft.legs]; legs[i] = { ...legs[i], legName: e.target.value }; setDraft({ ...draft, legs }); }} />
-                    <Button variant="ghost" onClick={() => move(i, -1)}><ArrowUp className="h-4 w-4" /></Button>
-                    <Button variant="ghost" onClick={() => move(i, 1)}><ArrowDown className="h-4 w-4" /></Button>
-                    <Button variant="ghost" onClick={() => setDraft({ ...draft, legs: draft.legs.filter((_, j) => j !== i) })}><X className="h-4 w-4" /></Button>
+                  <div key={i} className="rounded-md border border-border-default p-3 space-y-2 relative bg-bg-base text-sm">
+                    <div className="flex items-center justify-between border-b border-border-default pb-1.5 mb-1.5">
+                      <span className="font-semibold text-text-secondary">Leg {i + 1}</span>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => move(i, -1)} disabled={i === 0}>
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" className="h-8 w-8 p-0" onClick={() => move(i, 1)} disabled={i === draft.legs.length - 1}>
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-500/10" onClick={() => setDraft({ ...draft, legs: draft.legs.filter((_, j) => j !== i) })}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block">
+                        <span className="text-xs text-text-secondary block mb-1">Type</span>
+                        <Select
+                          value={l.legType}
+                          onChange={(e) => {
+                            const legs = [...draft.legs];
+                            legs[i] = { ...legs[i], legType: e.target.value };
+                            setDraft({ ...draft, legs });
+                          }}
+                        >
+                          <option value="Mark">Single Buoy</option>
+                          <option value="Gate">Gate</option>
+                        </Select>
+                      </label>
+
+                      <label className="block">
+                        <span className="text-xs text-text-secondary block mb-1">Name (optional)</span>
+                        <Input
+                          placeholder="e.g. Windward"
+                          value={l.legName}
+                          onChange={(e) => {
+                            const legs = [...draft.legs];
+                            legs[i] = { ...legs[i], legName: e.target.value };
+                            setDraft({ ...draft, legs });
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block">
+                        <span className="text-xs text-text-secondary block mb-1">
+                          {l.legType === "Gate" ? "Port Buoy (Mark 1)" : "Mark"}
+                        </span>
+                        <Select
+                          value={l.markId}
+                          onChange={(e) => {
+                            const legs = [...draft.legs];
+                            legs[i] = { ...legs[i], markId: e.target.value };
+                            setDraft({ ...draft, legs });
+                          }}
+                        >
+                          <option value="">— Select mark —</option>
+                          {marks.map((m) => (
+                            <option key={String(m.id)} value={String(m.id)}>
+                              {m.name}
+                            </option>
+                          ))}
+                        </Select>
+                      </label>
+
+                      {l.legType === "Gate" ? (
+                        <label className="block">
+                          <span className="text-xs text-text-secondary block mb-1">Starboard Buoy (Mark 2)</span>
+                          <Select
+                            value={l.gateMarkId}
+                            onChange={(e) => {
+                              const legs = [...draft.legs];
+                              legs[i] = { ...legs[i], gateMarkId: e.target.value };
+                              setDraft({ ...draft, legs });
+                            }}
+                          >
+                            <option value="">— Select mark —</option>
+                            {marks.map((m) => (
+                              <option key={String(m.id)} value={String(m.id)}>
+                                {m.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </label>
+                      ) : (
+                        <label className="block">
+                          <span className="text-xs text-text-secondary block mb-1">Rounding Direction</span>
+                          <Select
+                            value={l.passingSide}
+                            onChange={(e) => {
+                              const legs = [...draft.legs];
+                              legs[i] = { ...legs[i], passingSide: e.target.value };
+                              setDraft({ ...draft, legs });
+                            }}
+                          >
+                            <option value="Port">Port</option>
+                            <option value="Starboard">Starboard</option>
+                          </Select>
+                        </label>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="block">
+                        <span className="text-xs text-text-secondary block mb-1">Radius Override (m)</span>
+                        <Input
+                          type="number"
+                          placeholder="Use Mark Default"
+                          value={l.overrideRoundingRadiusMeters}
+                          onChange={(e) => {
+                            const legs = [...draft.legs];
+                            legs[i] = { ...legs[i], overrideRoundingRadiusMeters: e.target.value };
+                            setDraft({ ...draft, legs });
+                          }}
+                        />
+                      </label>
+                    </div>
                   </div>
                 ))}
               </div>

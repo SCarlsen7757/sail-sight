@@ -3247,6 +3247,8 @@ export interface components {
             gateLatitude: null | number | string;
             /** Format: double */
             gateLongitude: null | number | string;
+            /** Format: double */
+            markDefaultRoundingRadiusMeters: number | string;
         };
         CourseLegRequest: {
             /** Format: uuid */
@@ -3587,6 +3589,8 @@ export interface components {
             lat2: null | number | string;
             /** Format: double */
             lng2: null | number | string;
+            /** Format: double */
+            radiusMeters: number | string;
         };
         RaceDetailDto: {
             /** Format: uuid */

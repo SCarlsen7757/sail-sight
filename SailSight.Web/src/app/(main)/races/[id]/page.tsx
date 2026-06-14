@@ -152,7 +152,7 @@ export default function RaceViewerPage({ params }: PageProps) {
     boat: { lat: n(race.boatEnd.latitude), lon: n(race.boatEnd.longitude) },
   } : undefined;
 
-  const legs = course?.legs.map((l) => ({ latitude: n(l.latitude), longitude: n(l.longitude), markName: l.markName })) ?? [];
+  const legs = course?.legs ?? [];
 
   const sessionId = race?.sessionId;
 

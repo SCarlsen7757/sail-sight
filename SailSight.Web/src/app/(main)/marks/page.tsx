@@ -13,8 +13,8 @@ import { ThreeDotMenu } from "@/components/ui/three-dot-menu";
 import { useToast } from "@/hooks/useToast";
 import { Plus, X } from "lucide-react";
 
-interface Draft { name: string; activeFrom: string; activeUntil: string; latitude: string; longitude: string; description: string; }
-const emptyDraft = (): Draft => ({ name: "", activeFrom: new Date().toISOString().slice(0, 10), activeUntil: "", latitude: "", longitude: "", description: "" });
+interface Draft { name: string; activeFrom: string; activeUntil: string; latitude: string; longitude: string; description: string; defaultRoundingRadiusMeters: string; }
+const emptyDraft = (): Draft => ({ name: "", activeFrom: new Date().toISOString().slice(0, 10), activeUntil: "", latitude: "", longitude: "", description: "", defaultRoundingRadiusMeters: "20.0" });
 
 export default function MarksPage() {
   const toast = useToast();
@@ -59,6 +59,7 @@ export default function MarksPage() {
       latitude: String(m.latitude),
       longitude: String(m.longitude),
       description: m.description ?? "",
+      defaultRoundingRadiusMeters: String(m.defaultRoundingRadiusMeters ?? 20.0),
     });
   };
 
@@ -71,6 +72,7 @@ export default function MarksPage() {
       latitude: Number(draft.latitude),
       longitude: Number(draft.longitude),
       description: draft.description || null,
+      defaultRoundingRadiusMeters: Number(draft.defaultRoundingRadiusMeters) || 20.0,
     };
     const isNew = panelId === "new";
     const url = isNew ? "/api/v1/marks" : `/api/v1/marks/${panelId}`;
@@ -115,6 +117,7 @@ export default function MarksPage() {
                 <th className="px-3 py-2 text-left">Name</th>
                 <th className="px-3 py-2 text-left">Active from</th>
                 <th className="px-3 py-2 text-left">Active until</th>
+                <th className="px-3 py-2 text-left">Radius (m)</th>
                 <th className="px-3 py-2 text-left">Lat</th>
                 <th className="px-3 py-2 text-left">Lon</th>
                 <th className="px-3 py-2 text-left">Description</th>
@@ -127,6 +130,7 @@ export default function MarksPage() {
                   <td className="px-3 py-2">{m.name}</td>
                   <td className="px-3 py-2 text-text-secondary">{m.activeFrom}</td>
                   <td className="px-3 py-2 text-text-secondary">{m.activeUntil ?? "—"}</td>
+                  <td className="px-3 py-2 font-mono text-text-secondary">{m.defaultRoundingRadiusMeters ?? 20}</td>
                   <td className="px-3 py-2 font-mono">{Number(m.latitude).toFixed(6)}</td>
                   <td className="px-3 py-2 font-mono">{Number(m.longitude).toFixed(6)}</td>
                   <td className="px-3 py-2 text-text-secondary"><span className="block max-w-[16rem] truncate">{m.description ?? "—"}</span></td>
@@ -138,7 +142,7 @@ export default function MarksPage() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-text-secondary">No marks.</td></tr>}
+              {filtered.length === 0 && <tr><td colSpan={8} className="px-3 py-8 text-center text-text-secondary">No marks.</td></tr>}
             </tbody>
           </table>
         </Card>
@@ -160,6 +164,7 @@ export default function MarksPage() {
               <label className="block min-w-0"><span className="text-sm text-text-secondary">Latitude</span><Input type="number" step="0.000001" value={draft.latitude} onChange={(e) => setDraft({ ...draft, latitude: e.target.value })} /></label>
               <label className="block min-w-0"><span className="text-sm text-text-secondary">Longitude</span><Input type="number" step="0.000001" value={draft.longitude} onChange={(e) => setDraft({ ...draft, longitude: e.target.value })} /></label>
             </div>
+            <label className="block"><span className="text-sm text-text-secondary">Default Rounding Radius (meters)</span><Input type="number" step="0.5" value={draft.defaultRoundingRadiusMeters} onChange={(e) => setDraft({ ...draft, defaultRoundingRadiusMeters: e.target.value })} /></label>
             <label className="block"><span className="text-sm text-text-secondary">Description</span><Textarea value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /></label>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="secondary" onClick={() => setPanelId(null)}>Cancel</Button>

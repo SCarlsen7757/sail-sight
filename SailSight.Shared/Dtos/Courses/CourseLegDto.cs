@@ -14,4 +14,5 @@ public record CourseLegDto(
     double Latitude,
     double Longitude,
     double? GateLatitude,
-    double? GateLongitude);
+    double? GateLongitude,
+    double MarkDefaultRoundingRadiusMeters);

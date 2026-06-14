@@ -221,7 +221,8 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLe
                 l.SortOrder, l.LegName, l.OverrideRoundingRadiusMeters,
                 l.LegType.ToString(), l.PassingSide.ToString(),
                 l.Mark.Latitude, l.Mark.Longitude,
-                l.GateMark?.Latitude, l.GateMark?.Longitude))]
+                l.GateMark?.Latitude, l.GateMark?.Longitude,
+                l.Mark.DefaultRoundingRadiusMeters))]
         );
     }
 }
