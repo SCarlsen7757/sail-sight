@@ -105,9 +105,10 @@ export default function BoatsPage() {
             </thead>
             <tbody>
               {filtered.map((b) => (
-                <tr key={String(b.id)} className="border-t border-border-default text-sm hover:bg-bg-elevated/40">
+                <tr key={String(b.id)} className="group relative cursor-pointer border-t border-border-default text-sm hover:bg-bg-elevated/40">
                   <td className="px-3 py-2">
-                    <Link href={`/b/${b.id}`} className="text-action-primary hover:underline">{b.name}</Link>
+                    <Link href={`/b/${b.id}`} className="absolute inset-0 z-10" aria-label={`View boat ${b.name}`} />
+                    <span className="font-medium text-action-primary">{b.name}</span>
                   </td>
                   <td className="px-3 py-2 text-text-secondary">{b.sailNumber ?? "—"}</td>
                   <td className="px-3 py-2 text-text-secondary">{b.boatClass.name}</td>

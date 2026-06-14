@@ -1,5 +1,5 @@
 import simplify from "simplify-js";
-import type { Position } from "@/lib/schemas";
+import type { Position, NormalizedPosition } from "@/lib/schemas";
 import { n } from "@/lib/schemas";
 
 /**
@@ -25,7 +25,7 @@ export function zoomToTolerance(zoom: number): number {
  * @param positions  Raw GPS position array
  * @param windowSize Number of samples to average. Must be odd; defaults to 5.
  */
-export function smoothTrackPositions(positions: Position[], windowSize = 5): Position[] {
+export function smoothTrackPositions(positions: NormalizedPosition[], windowSize = 5): NormalizedPosition[] {
   if (positions.length < 2) return positions;
   const half = Math.floor(windowSize / 2);
   return positions.map((p, i) => {
@@ -33,72 +33,42 @@ export function smoothTrackPositions(positions: Position[], windowSize = 5): Pos
     const end = Math.min(positions.length - 1, i + half);
     let sumLat = 0, sumLon = 0, count = 0;
     for (let j = start; j <= end; j++) {
-      sumLat += n(positions[j].latitude);
-      sumLon += n(positions[j].longitude);
+      sumLat += positions[j].lat;
+      sumLon += positions[j].lon;
       count++;
     }
-    return { ...p, latitude: sumLat / count, longitude: sumLon / count };
+    return { ...p, lat: sumLat / count, lon: sumLon / count };
   });
 }
 
 /**
  * Simplifies a GPS track using the Ramer-Douglas-Peucker algorithm (via simplify-js).
  * Returns [lat, lon] pairs suitable for Leaflet Polyline rendering.
- *
- * @param positions  Raw GPS position array (unsimplified, with timestamps)
- * @param tolerance  RDP tolerance in degrees. Default 0.00005° ≈ 5 m.
  */
 export function simplifyTrack(
-  positions: Position[],
+  positions: NormalizedPosition[],
   tolerance = 0.00005
 ): [number, number][] {
   if (positions.length < 2) {
-    return positions.map((p) => [n(p.latitude), n(p.longitude)]);
+    return positions.map((p) => [p.lat, p.lon]);
   }
-  const pts = positions.map((p) => ({ x: n(p.longitude), y: n(p.latitude) }));
+  const pts = positions.map((p) => ({ x: p.lon, y: p.lat }));
   const simplified = simplify(pts, tolerance, true);
   return simplified.map((p) => [p.y, p.x]);
-}
-
-/**
- * Simplifies a GPS track and returns the subset of original Position objects
- * whose coordinates were retained by RDP.  Useful when you need per-point
- * metadata (e.g. speed) alongside the simplified geometry.
- *
- * @param positions  Raw GPS position array
- * @param tolerance  RDP tolerance in degrees (default 0.00005° ≈ 5 m)
- */
-export function simplifyPositions(
-  positions: Position[],
-  tolerance = 0.00005
-): Position[] {
-  if (positions.length < 2) return positions;
-  const pts = positions.map((p) => ({ x: n(p.longitude), y: n(p.latitude) }));
-  const simplified = simplify(pts, tolerance, true);
-  // Build a Set of "lon_lat" keys for O(1) lookup
-  const kept = new Set(simplified.map((p) => `${p.x}_${p.y}`));
-  return positions.filter((p) => kept.has(`${n(p.longitude)}_${n(p.latitude)}`));
 }
 
 /**
  * Simplifies a GPS track (RDP) and returns both the retained Position objects
  * and the **maximum** speedOverGround observed across all original points that
  * were merged into each segment between consecutive simplified points.
- *
- * When zoomed out, many points collapse into one segment; using the max speed
- * ensures the heatmap colour reflects the fastest moment within that segment
- * rather than just the speed at the start point.
- *
- * @param positions  Raw GPS position array
- * @param tolerance  RDP tolerance in degrees (default 0.00005° ≈ 5 m)
  */
 export function simplifyPositionsWithMaxSpeeds(
-  positions: Position[],
+  positions: NormalizedPosition[],
   tolerance = 0.00005
-): { positions: Position[]; maxSpeeds: number[] } {
+): { positions: NormalizedPosition[]; maxSpeeds: number[] } {
   if (positions.length < 2) return { positions, maxSpeeds: [] };
 
-  const pts = positions.map((p) => ({ x: n(p.longitude), y: n(p.latitude) }));
+  const pts = positions.map((p) => ({ x: p.lon, y: p.lat }));
   const simplified = simplify(pts, tolerance, true);
 
   // Build a lookup of kept coordinate keys to find their indices in the original array
@@ -106,7 +76,7 @@ export function simplifyPositionsWithMaxSpeeds(
   const keptIndices: number[] = [];
   for (let i = 0; i < positions.length; i++) {
     const p = positions[i];
-    if (kept.has(`${n(p.longitude)}_${n(p.latitude)}`)) {
+    if (kept.has(`${p.lon}_${p.lat}`)) {
       keptIndices.push(i);
     }
   }
@@ -120,7 +90,7 @@ export function simplifyPositionsWithMaxSpeeds(
     const end = keptIndices[seg + 1];
     let maxSpeed = -Infinity;
     for (let j = start; j <= end; j++) {
-      const v = n(positions[j].speedOverGround);
+      const v = positions[j].sog;
       if (v > maxSpeed) maxSpeed = v;
     }
     maxSpeeds.push(maxSpeed === -Infinity ? 0 : maxSpeed);
@@ -137,56 +107,56 @@ export interface InterpolatedPosition {
 }
 
 /**
- * Interpolates the boat position and heading between the two GPS samples that
- * bracket `targetMs`.  Returns null when the positions array is empty or
- * targetMs is out of range.
- *
- * - lat/lon: linear interpolation
- * - COG: angular shortest-path interpolation (handles 0/2π wrap-around)
+ * Find the index of the last point whose timestamp is <= targetMs
  */
-export function interpolatePosition(
-  positions: Position[],
-  targetMs: number
-): InterpolatedPosition | null {
-  if (!positions.length) return null;
-
-  // Binary search: find the last index whose timestamp <= targetMs
+export function findNearestIndex(positions: NormalizedPosition[], targetMs: number): number {
+  if (!positions.length) return -1;
   let lo = 0;
   let hi = positions.length - 1;
 
-  const tFirst = new Date(positions[0].time).getTime();
-  const tLast = new Date(positions[hi].time).getTime();
-
-  if (targetMs <= tFirst) {
-    const p = positions[0];
-    return { lat: n(p.latitude), lon: n(p.longitude), cog: n(p.courseOverGround) };
-  }
-  if (targetMs >= tLast) {
-    const p = positions[hi];
-    return { lat: n(p.latitude), lon: n(p.longitude), cog: n(p.courseOverGround) };
-  }
+  if (targetMs <= positions[0].t) return 0;
+  if (targetMs >= positions[hi].t) return hi;
 
   while (lo < hi - 1) {
     const mid = (lo + hi) >> 1;
-    if (new Date(positions[mid].time).getTime() <= targetMs) {
+    if (positions[mid].t <= targetMs) {
       lo = mid;
     } else {
       hi = mid;
     }
   }
+  return lo;
+}
+
+/**
+ * Interpolates the boat position and heading between the two GPS samples that
+ * bracket `targetMs`.
+ */
+export function interpolatePosition(
+  positions: NormalizedPosition[],
+  targetMs: number
+): InterpolatedPosition | null {
+  if (!positions.length) return null;
+
+  const lo = findNearestIndex(positions, targetMs);
+  if (lo === -1) return null;
+  if (lo === positions.length - 1 || positions[lo].t === targetMs) {
+    const p = positions[lo];
+    return { lat: p.lat, lon: p.lon, cog: p.cog };
+  }
 
   const p0 = positions[lo];
-  const p1 = positions[hi];
-  const t0 = new Date(p0.time).getTime();
-  const t1 = new Date(p1.time).getTime();
-  const frac = t1 === t0 ? 0 : (targetMs - t0) / (t1 - t0);
+  const p1 = positions[lo + 1];
+  const t0 = p0.t;
+  const t1 = p1.t;
+  const frac = (targetMs - t0) / (t1 - t0);
 
-  const lat = n(p0.latitude) + (n(p1.latitude) - n(p0.latitude)) * frac;
-  const lon = n(p0.longitude) + (n(p1.longitude) - n(p0.longitude)) * frac;
+  const lat = p0.lat + (p1.lat - p0.lat) * frac;
+  const lon = p0.lon + (p1.lon - p0.lon) * frac;
 
   // Angular shortest-path interpolation for COG (radians)
-  const cog0 = n(p0.courseOverGround);
-  const cog1 = n(p1.courseOverGround);
+  const cog0 = p0.cog;
+  const cog1 = p1.cog;
   let delta = cog1 - cog0;
   while (delta > Math.PI) delta -= 2 * Math.PI;
   while (delta < -Math.PI) delta += 2 * Math.PI;

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Card } from "@/components/ui/controls";
 import type { Race } from "@/lib/schemas";
 import { n } from "@/lib/schemas";
@@ -14,11 +15,11 @@ import { useUnitPrefs } from "@/store/settings";
 
 interface RaceTableProps {
   races: Race[];
-  onRowClick: (race: Race) => void;
+  rowHref: (race: Race) => string;
   showCourse?: boolean;
 }
 
-export function RaceTable({ races, onRowClick, showCourse = false }: RaceTableProps) {
+export function RaceTable({ races, rowHref, showCourse = false }: RaceTableProps) {
   const { prefs } = useUnitPrefs();
 
   return (
@@ -42,10 +43,16 @@ export function RaceTable({ races, onRowClick, showCourse = false }: RaceTablePr
             {races.map((r) => (
               <tr
                 key={String(r.id)}
-                className="cursor-pointer border-t border-border-default text-sm hover:bg-bg-elevated/40"
-                onClick={() => onRowClick(r)}
+                className="group relative cursor-pointer border-t border-border-default text-sm hover:bg-bg-elevated/40"
               >
-                <td className="px-3 py-2 font-medium text-action-primary">Race {n(r.raceNumber)}</td>
+                <td className="px-3 py-2 font-medium text-action-primary">
+                  <Link
+                    href={rowHref(r)}
+                    className="absolute inset-0 z-10"
+                    aria-label={`View race ${n(r.raceNumber)}`}
+                  />
+                  Race {n(r.raceNumber)}
+                </td>
                 <td className="px-3 py-2 text-text-secondary">{new Date(r.startedAt).toLocaleString()}</td>
                 <td className="px-3 py-2 font-mono">
                   {r.durationSeconds != null ? formatDuration(n(r.durationSeconds)) : "—"}

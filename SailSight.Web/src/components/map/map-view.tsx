@@ -78,7 +78,17 @@ function DragTracker({ onDrag }: { onDrag: () => void }) {
 function FollowBoat({ point, followMode }: { point: L.LatLngExpression | null; followMode: boolean }) {
   const map = useMap();
   useEffect(() => {
-    if (followMode && point) map.panTo(point);
+    if (!followMode || !point) return;
+    
+    // Smart Panning: only pan if the point is near the edge of the viewport
+    const latlng = L.latLng(point);
+    const bounds = map.getBounds();
+    const pad = 0.2; // 20% margin
+    const innerBounds = bounds.pad(-pad);
+    
+    if (!innerBounds.contains(latlng)) {
+      map.panTo(latlng, { animate: true, duration: 0.5 });
+    }
   }, [point, followMode, map]);
   return null;
 }
@@ -143,14 +153,9 @@ export default function MapView({
 
   const tolerance = useMemo(() => zoomToTolerance(zoom), [zoom]);
 
-  const smoothedPositions = useMemo(
-    () => smoothTrackPositions(positions ?? []),
-    [positions]
-  );
-  const smoothedPreRacePositions = useMemo(
-    () => smoothTrackPositions(preRacePositions ?? []),
-    [preRacePositions]
-  );
+  // Positions are now normalized (including pre-calculated timestamps and smoothed at source)
+  const smoothedPositions = positions ?? [];
+  const smoothedPreRacePositions = preRacePositions ?? [];
 
   const points = useMemo(
     () => simplifyTrack(smoothedPositions, tolerance),
@@ -169,7 +174,7 @@ export default function MapView({
   const heatmapPositions = heatmapData.positions;
   const heatmapMaxSpeeds = heatmapData.maxSpeeds;
   const heatmapPoints = useMemo(
-    () => heatmapPositions.map((p) => [n(p.latitude), n(p.longitude)] as [number, number]),
+    () => heatmapPositions.map((p) => [p.lat, p.lon] as [number, number]),
     [heatmapPositions]
   );
 
@@ -183,13 +188,9 @@ export default function MapView({
     return { min, max: max > min ? max : min + 1 };
   }, [heatmapMaxSpeeds]);
 
-  const smoothedWindowPositions = useMemo(
-    () => smoothTrackPositions(windowPositions ?? []),
-    [windowPositions]
-  );
   const windowPoints = useMemo(
-    () => simplifyTrack(smoothedWindowPositions, tolerance),
-    [smoothedWindowPositions, tolerance]
+    () => simplifyTrack(windowPositions ?? [], tolerance),
+    [windowPositions, tolerance]
   );
 
   const center = points[0] ?? [0, 0];
@@ -214,8 +215,43 @@ export default function MapView({
     const arrow = el.querySelector(".boat-arrow") as HTMLElement | null;
     if (!arrow) return;
     const scale = BOAT_ICON_SIZE / BOAT_ICON_CANVAS;
-    arrow.style.transform = `rotate(${playbackPosition?.cog ?? 0}deg) scale(${scale})`;
-  }, [playbackPosition?.cog]);
+    arrow.style.transform = `rotate(${playbackPosition?.cogDeg ?? 0}deg) scale(${scale})`;
+  }, [playbackPosition?.cogDeg]);
+
+  // Heatmap Optimization: Group segments into fewer Polyline groups
+  const heatmapSegments = useMemo(() => {
+    if (trackMode !== "heatmap" || heatmapPoints.length < 2) return [];
+    
+    // To reduce the number of Polyline components, we group segments that have 
+    // very similar speeds (e.g. within 5% of range).
+    const segments: { points: [number, number][]; color: string }[] = [];
+    if (heatmapPoints.length === 0) return [];
+
+    let currentPoints: [number, number][] = [heatmapPoints[0]];
+    let lastColor = "";
+
+    const range = speedRange.max - speedRange.min;
+
+    for (let i = 0; i < heatmapPoints.length - 1; i++) {
+      const v = heatmapMaxSpeeds[i] ?? 0;
+      const t = (v - speedRange.min) / (range || 1);
+      const color = speedColor(Math.max(0, Math.min(1, t)));
+      
+      if (color === lastColor) {
+        currentPoints.push(heatmapPoints[i + 1]);
+      } else {
+        if (currentPoints.length > 1) {
+          segments.push({ points: currentPoints, color: lastColor });
+        }
+        currentPoints = [heatmapPoints[i], heatmapPoints[i + 1]];
+        lastColor = color;
+      }
+    }
+    if (currentPoints.length > 1) {
+      segments.push({ points: currentPoints, color: lastColor });
+    }
+    return segments;
+  }, [trackMode, heatmapPoints, heatmapMaxSpeeds, speedRange]);
 
   return (
     <MapContainer center={center as L.LatLngExpression} zoom={14} className="h-full w-full">
@@ -242,21 +278,13 @@ export default function MapView({
         <Polyline positions={points} pathOptions={{ color: "#00FFFF", weight: 3, opacity: 0.9 }} />
       )}
 
-      {trackMode === "heatmap" && heatmapPositions.length > 1 && (
-        <>
-          {heatmapPoints.slice(0, -1).map((p, i) => {
-            const v = heatmapMaxSpeeds[i] ?? 0;
-            const t = (v - speedRange.min) / (speedRange.max - speedRange.min);
-            return (
-              <Polyline
-                key={i}
-                positions={[p, heatmapPoints[i + 1]]}
-                pathOptions={{ color: speedColor(Math.max(0, Math.min(1, t))), weight: 3, opacity: 0.9 }}
-              />
-            );
-          })}
-        </>
-      )}
+      {trackMode === "heatmap" && heatmapSegments.map((seg, i) => (
+        <Polyline
+          key={i}
+          positions={seg.points}
+          pathOptions={{ color: seg.color, weight: 3, opacity: 0.9 }}
+        />
+      ))}
 
       {windowPoints.length > 1 && (
         <Polyline positions={windowPoints} pathOptions={{ color: "#FF8C00", weight: 9, opacity: 0.35 }} />

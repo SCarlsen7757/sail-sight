@@ -1,198 +1,151 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TelemetryChart, ChartSeries } from "./telemetry-chart";
-import type { Position, Wind, Depth, Temperature, Load, SpeedThroughWater, ShiftAngle } from "@/lib/schemas";
+import type { NormalizedTelemetry } from "@/lib/schemas";
 import { n } from "@/lib/schemas";
 import { useUnitPrefs } from "@/store/settings";
 import { convertSpeed, convertWind, radiansToDegrees, speedUnitLabel, windUnitLabel } from "@/lib/units";
-import { sgSmooth, sgSmoothAngularRad, sgSmoothQuaternions } from "@/lib/downsampling";
+import { normalizeTelemetry } from "@/lib/normalization";
 import { useRaceViewerStore } from "@/store/race-viewer";
 
 const COLORS = { primary: "#00FFFF", secondary: "#FF00FF", green: "#39FF14", yellow: "#FFFF00" };
 
-// Quaternion → roll (heel) and pitch (trim) in degrees.
-function quatToHeelTrim(w: number, x: number, y: number, z: number) {
-  const sinr_cosp = 2 * (w * x + y * z);
-  const cosr_cosp = 1 - 2 * (x * x + y * y);
-  const roll = Math.atan2(sinr_cosp, cosr_cosp);
-  const sinp = 2 * (w * y - z * x);
-  const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
-  return { heelDeg: radiansToDegrees(roll), trimDeg: radiansToDegrees(pitch) };
+// Heel/Trim from normalized positions (pre-smoothed)
+function getHeelTrimSeries(pos: NormalizedTelemetry["positions"]) {
+  return pos.map((p) => {
+    const w = p.qW, x = p.qX, y = p.qY, z = p.qZ;
+    const sinr_cosp = 2 * (w * x + y * z);
+    const cosr_cosp = 1 - 2 * (x * x + y * y);
+    const roll = Math.atan2(sinr_cosp, cosr_cosp);
+    const sinp = 2 * (w * y - z * x);
+    const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
+    return { t: p.t, heelDeg: radiansToDegrees(roll), trimDeg: radiansToDegrees(pitch) };
+  });
 }
 
 interface Props {
   raceId: string;
-  /** Absolute ms timestamp of the race start signal — used to convert window offsets to ms. */
   raceStartMs: number;
-  /** Countdown duration in seconds (0 for session viewer). Used to fetch pre-race telemetry. */
   raceStartOffset: number;
-  /** Logging frequency of the device in Hz. */
   telemetryRateHz: number;
-}
-
-interface RaceTelemetry {
-  positions: Position[];
-  wind: Wind[];
-  speedThroughWater: SpeedThroughWater[];
-  depth: Depth[];
-  temperature: Temperature[];
-  load: Load[];
-  shiftAngles: ShiftAngle[];
 }
 
 export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset, telemetryRateHz }: Props) {
   const { prefs } = useUnitPrefs();
-  const { windowStart, windowEnd, position } = useRaceViewerStore();
-
-  // Smoothing windows calculated from time horizons (seconds * Hz).
-  const hz = telemetryRateHz > 0 ? telemetryRateHz : 1;
-  const sogWindow = Math.max(5, Math.round(1.5 * hz) | 1);
-  const heelWindow = Math.max(5, Math.round(5.0 * hz) | 1);
-  const windWindow = Math.max(5, Math.round(3.0 * hz) | 1);
+  const windowStart = useRaceViewerStore((s) => s.windowStart);
+  const windowEnd = useRaceViewerStore((s) => s.windowEnd);
+  const position = useRaceViewerStore((s) => s.position);
 
   // Convert window offsets (seconds from data-start) to absolute ms timestamps.
   const windowStartMs = raceStartMs + (windowStart - raceStartOffset) * 1000;
   const windowEndMs = raceStartMs + (windowEnd - raceStartOffset) * 1000;
-  // Current playback position as absolute ms timestamp (for the chart position marker).
   const positionMs = raceStartMs + (position - raceStartOffset) * 1000;
 
-  const [telemetry, setTelemetry] = useState<RaceTelemetry | null>(null);
+  const [telemetry, setTelemetry] = useState<NormalizedTelemetry | null>(null);
 
   useEffect(() => {
     const from = raceStartOffset > 0 ? `?from=${-raceStartOffset}` : "";
     fetch(`/api/v1/races/${raceId}/telemetry${from}`)
-      .then((r) => r.ok ? r.json() as Promise<RaceTelemetry> : null)
+      .then((r) => r.ok ? r.json() : null)
       .then((d) => {
-        if (!d) {
-          setTelemetry({ positions: [], wind: [], speedThroughWater: [], depth: [], temperature: [], load: [], shiftAngles: [] });
-          return;
-        }
-
-        // Apply smoothing to the telemetry set
-        const pos = d.positions || [];
-        if (pos.length > 5) {
-          const smoothedSog = sgSmooth(pos.map(p => n(p.speedOverGround)), sogWindow);
-          const smoothedCog = sgSmoothAngularRad(pos.map(p => n(p.courseOverGround)), sogWindow);
-          const smoothedQuats = sgSmoothQuaternions(pos.map(p => ({
-            w: n(p.quaternionW), x: n(p.quaternionX), y: n(p.quaternionY), z: n(p.quaternionZ)
-          })), heelWindow);
-
-          d.positions = pos.map((p, i) => ({
-            ...p,
-            speedOverGround: smoothedSog[i],
-            courseOverGround: smoothedCog[i],
-            quaternionW: smoothedQuats[i].w,
-            quaternionX: smoothedQuats[i].x,
-            quaternionY: smoothedQuats[i].y,
-            quaternionZ: smoothedQuats[i].z,
-          }));
-        }
-
-        const wind = d.wind || [];
-        if (wind.length > 5) {
-          const smoothedSpeed = sgSmooth(wind.map(w => n(w.windSpeed)), windWindow);
-          const smoothedDir = sgSmoothAngularRad(wind.map(w => n(w.windDirection)), windWindow);
-          d.wind = wind.map((w, i) => ({
-            ...w,
-            windSpeed: smoothedSpeed[i],
-            windDirection: smoothedDir[i],
-          }));
-        }
-
-        setTelemetry(d);
+        if (!d) return;
+        const hz = telemetryRateHz > 0 ? telemetryRateHz : 1;
+        setTelemetry(normalizeTelemetry(d, hz));
       });
-  }, [raceId, raceStartOffset, sogWindow, heelWindow, windWindow]);
+  }, [raceId, raceStartOffset, telemetryRateHz]);
 
-  const posData = telemetry?.positions ?? [];
-  const windData = telemetry?.wind ?? [];
-  const stwData = telemetry?.speedThroughWater ?? [];
-  const depthData = telemetry?.depth ?? [];
-  const tempData = telemetry?.temperature ?? [];
-  const loadData = telemetry?.load ?? [];
-  const shiftsData = telemetry?.shiftAngles ?? [];
+  // Memoize all chart series based on telemetry data and unit preferences.
+  // This ensures we only re-map the arrays when data actually changes, not on every playback tick.
+  const series = useMemo(() => {
+    if (!telemetry) return null;
+    const { positions, wind, stw, depth, temp, load, shifts } = telemetry;
 
-  const sogSeries: ChartSeries = {
-    name: `SOG (${speedUnitLabel(prefs.boatSpeed)})`,
-    color: COLORS.primary,
-    data: posData.map((p) => ({ t: new Date(p.time).getTime(), v: convertSpeed(n(p.speedOverGround), prefs.boatSpeed) })),
-  };
+    const sog: ChartSeries = {
+      name: `SOG (${speedUnitLabel(prefs.boatSpeed)})`,
+      color: COLORS.primary,
+      data: positions.map((p) => ({ t: p.t, v: convertSpeed(p.sog, prefs.boatSpeed) })),
+    };
+    const cog: ChartSeries = {
+      name: "COG (°)",
+      color: COLORS.secondary,
+      data: positions.map((p) => ({ t: p.t, v: ((radiansToDegrees(p.cog) % 360) + 360) % 360 })),
+    };
+    const windSpeed: ChartSeries = {
+      name: `Wind speed (${windUnitLabel(prefs.wind)})`,
+      color: COLORS.green,
+      data: wind.map((p) => ({ t: p.t, v: convertWind(p.speed, prefs.wind) })),
+    };
+    const windDir: ChartSeries = {
+      name: "Wind dir (°)",
+      color: COLORS.yellow,
+      yAxisIndex: 1,
+      data: wind.map((p) => ({ t: p.t, v: ((radiansToDegrees(p.dir) % 360) + 360) % 360 })),
+    };
 
-  const cogSeries: ChartSeries = {
-    name: "COG (°)",
-    color: COLORS.secondary,
-    data: posData.map((p) => ({ t: new Date(p.time).getTime(), v: ((radiansToDegrees(n(p.courseOverGround)) % 360) + 360) % 360 })),
-  };
-  const windSpeedSeries: ChartSeries = {
-    name: `Wind speed (${windUnitLabel(prefs.wind)})`,
-    color: COLORS.green,
-    data: windData.map((p) => ({ t: new Date(p.time).getTime(), v: convertWind(n(p.windSpeed), prefs.wind) })),
-  };
-  const windDirSeries: ChartSeries = {
-    name: "Wind dir (°)",
-    color: COLORS.yellow,
-    yAxisIndex: 1,
-    data: windData.map((p) => ({ t: new Date(p.time).getTime(), v: ((radiansToDegrees(n(p.windDirection)) % 360) + 360) % 360 })),
-  };
+    const htRaw = getHeelTrimSeries(positions);
+    const heel: ChartSeries = { name: "Heel (°)", color: COLORS.primary, data: htRaw.map(p => ({ t: p.t, v: p.heelDeg })) };
+    const trim: ChartSeries = { name: "Trim (°)", color: COLORS.secondary, yAxisIndex: 1, data: htRaw.map(p => ({ t: p.t, v: p.trimDeg })) };
 
-  const heelTrim = posData.map((p) => {
-    const { heelDeg, trimDeg } = quatToHeelTrim(n(p.quaternionW), n(p.quaternionX), n(p.quaternionY), n(p.quaternionZ));
-    return { t: new Date(p.time).getTime(), heelDeg, trimDeg };
-  });
-  const heelSeries: ChartSeries = { name: "Heel (°)", color: COLORS.primary, data: heelTrim.map((p) => ({ t: p.t, v: p.heelDeg })) };
-  const trimSeries: ChartSeries = { name: "Trim (°)", color: COLORS.secondary, yAxisIndex: 1, data: heelTrim.map((p) => ({ t: p.t, v: p.trimDeg })) };
+    const stwSeries: ChartSeries[] = stw.length > 0 ? [{
+      name: `STW (${speedUnitLabel(prefs.boatSpeed)})`,
+      color: COLORS.green,
+      data: stw.map((p) => ({ t: p.t, v: convertSpeed(p.speed, prefs.boatSpeed) })),
+    }] : [];
+
+    const depthSeries: ChartSeries[] = depth.length > 0 ? [{ name: "Depth", color: COLORS.yellow, data: depth.map((p) => ({ t: p.t, v: p.depth })) }] : [];
+    const tempSeries: ChartSeries[] = temp.length > 0 ? [{ name: "Temp", color: COLORS.primary, data: temp.map((p) => ({ t: p.t, v: p.temp })) }] : [];
+    const loadSeries: ChartSeries[] = load.length > 0 ? [{ name: "Load", color: COLORS.secondary, data: load.map((p) => ({ t: p.t, v: p.load })) }] : [];
+    const shiftSeries: ChartSeries[] = shifts.length > 0 ? [{ name: "True heading", color: COLORS.green, data: shifts.map((p) => ({ t: p.t, v: radiansToDegrees(p.heading) })) }] : [];
+
+    return { sog, cog, windSpeed, windDir, heel, trim, stwSeries, depthSeries, tempSeries, loadSeries, shiftSeries };
+  }, [telemetry, prefs.boatSpeed, prefs.wind]);
+
+  if (!series) return null;
+
+  const gridClass = "grid grid-cols-1 gap-4 lg:grid-cols-2";
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={gridClass}>
       <div className="rounded-lg bg-bg-surface p-3 ring-1 ring-border-default">
-        <TelemetryChart title="Speed (SOG)" series={[sogSeries]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
+        <TelemetryChart title="Speed (SOG)" series={[series.sog]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
       </div>
       <div className="rounded-lg bg-bg-surface p-3 ring-1 ring-border-default">
-        <TelemetryChart title="Heading (COG)" series={[cogSeries]} yAxes={[{ min: 0, max: 360 }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
+        <TelemetryChart title="Heading (COG)" series={[series.cog]} yAxes={[{ min: 0, max: 360 }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
       </div>
       <div className="rounded-lg bg-bg-surface p-3 ring-1 ring-border-default">
-        <TelemetryChart title="Heel & Trim" series={[heelSeries, trimSeries]} yAxes={[{ name: "Heel", min: -45, max: 45 }, { name: "Trim", min: -10, max: 10 }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
+        <TelemetryChart title="Heel & Trim" series={[series.heel, series.trim]} yAxes={[{ name: "Heel", min: -45, max: 45 }, { name: "Trim", min: -10, max: 10 }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
       </div>
 
-      {windData.length > 0 && (
+      {series.windSpeed.data.length > 0 && (
         <div className="rounded-lg bg-bg-surface p-3 ring-1 ring-border-default">
-          <TelemetryChart title="Wind" series={[windSpeedSeries, windDirSeries]} yAxes={[{ name: "Speed" }, { name: "Dir", min: 0, max: 360 }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
+          <TelemetryChart title="Wind" series={[series.windSpeed, series.windDir]} yAxes={[{ name: "Speed" }, { name: "Dir", min: 0, max: 360 }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
         </div>
       )}
 
-      {stwData.length > 0 && (
+      {series.stwSeries.length > 0 && (
         <div className="rounded-lg bg-bg-surface p-3 ring-1 ring-border-default">
-          <TelemetryChart
-            title="Speed through water"
-            series={[{
-              name: `STW (${speedUnitLabel(prefs.boatSpeed)})`,
-              color: COLORS.green,
-              data: stwData.map((p) => ({ t: new Date(p.time).getTime(), v: convertSpeed(n(p.forwardSpeed), prefs.boatSpeed) })),
-            }]}
-            windowStartMs={windowStartMs}
-            windowEndMs={windowEndMs}
-            positionMs={positionMs}
-          />
+          <TelemetryChart title="Speed through water" series={series.stwSeries} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
         </div>
       )}
-      {depthData.length > 0 && (
+      {series.depthSeries.length > 0 && (
         <div className="rounded-lg bg-bg-surface p-3 ring-1 ring-border-default">
-          <TelemetryChart title="Depth (m)" series={[{ name: "Depth", color: COLORS.yellow, data: depthData.map((p) => ({ t: new Date(p.time).getTime(), v: n(p.depth) })) }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
+          <TelemetryChart title="Depth (m)" series={series.depthSeries} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
         </div>
       )}
-      {tempData.length > 0 && (
+      {series.tempSeries.length > 0 && (
         <div className="rounded-lg bg-bg-surface p-3 ring-1 ring-border-default">
-          <TelemetryChart title="Temperature (°C)" series={[{ name: "Temp", color: COLORS.primary, data: tempData.map((p) => ({ t: new Date(p.time).getTime(), v: n(p.temperature) })) }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
+          <TelemetryChart title="Temperature (°C)" series={series.tempSeries} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
         </div>
       )}
-      {loadData.length > 0 && (
+      {series.loadSeries.length > 0 && (
         <div className="rounded-lg bg-bg-surface p-3 ring-1 ring-border-default">
-          <TelemetryChart title="Load" series={[{ name: "Load", color: COLORS.secondary, data: loadData.map((p) => ({ t: new Date(p.time).getTime(), v: n(p.load) })) }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
+          <TelemetryChart title="Load" series={series.loadSeries} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
         </div>
       )}
-      {shiftsData.length > 0 && (
+      {series.shiftSeries.length > 0 && (
         <div className="rounded-lg bg-bg-surface p-3 ring-1 ring-border-default">
-          <TelemetryChart title="Shift angles (heading °)" series={[{ name: "True heading", color: COLORS.green, data: shiftsData.map((p) => ({ t: new Date(p.time).getTime(), v: radiansToDegrees(n(p.trueHeading)) })) }]} yAxes={[{ min: 0, max: 360 }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
+          <TelemetryChart title="Shift angles" series={series.shiftSeries} yAxes={[{ min: 0, max: 360 }]} windowStartMs={windowStartMs} windowEndMs={windowEndMs} positionMs={positionMs} />
         </div>
       )}
     </div>

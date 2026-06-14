@@ -75,7 +75,7 @@ export function TelemetryChart({
         yAxisIndex: s.yAxisIndex ?? 0,
         lineStyle: { width: 1.5, color: s.color },
         itemStyle: { color: s.color },
-        data: s.data.map((p) => [p.t, p.v]),
+        data: s.data.map((p) => [p.t, p.v]), // ECharts expects [x, y] pairs
         ...(positionMarkLine ? { markLine: positionMarkLine } : {}),
       })),
     } as EChartsOption;

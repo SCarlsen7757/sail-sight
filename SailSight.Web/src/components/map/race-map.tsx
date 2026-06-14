@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import type { Position, RaceDetail, CourseLeg } from "@/lib/schemas";
+import type { NormalizedPosition, RaceDetail, CourseLeg } from "@/lib/schemas";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { Crosshair, Maximize2 } from "lucide-react";
 
@@ -12,15 +12,15 @@ const MapView = dynamic(() => import("./map-view"), { ssr: false });
 export type TrackMode = "flat" | "heatmap";
 
 export interface RaceMapProps {
-  positions: Position[] | null;
+  positions: NormalizedPosition[] | null;
   race: RaceDetail | null;
   legs?: CourseLeg[];
   startLine?: { pin?: { lat: number; lon: number }; boat?: { lat: number; lon: number } };
-  playbackPosition?: { lat: number; lon: number; cog: number } | null;
-  preRacePositions?: Position[] | null;
+  playbackPosition?: { lat: number; lon: number; cogDeg: number } | null;
+  preRacePositions?: NormalizedPosition[] | null;
   trackMode?: TrackMode;
   /** Positions within the selected time window — rendered as a highlighted overlay on the track. */
-  windowPositions?: Position[] | null;
+  windowPositions?: NormalizedPosition[] | null;
   /** Boat length in metres from the assigned boat class — used to scale the playback icon. Defaults to 11 m when not provided. */
   boatLengthMeters?: number | null;
   /** When true, the map container fills the full height of its flex parent. */

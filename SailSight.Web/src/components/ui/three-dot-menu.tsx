@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { MoreVertical } from "lucide-react";
 
 export interface ThreeDotItem {
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
+  href?: string;
   destructive?: boolean;
 }
 
@@ -50,17 +52,34 @@ export function ThreeDotMenu({ items }: { items: ThreeDotItem[] }) {
           style={{ position: "absolute", top: coords.top, right: coords.right }}
           className="z-50 min-w-[10rem] overflow-hidden rounded-md bg-bg-elevated shadow-lg ring-1 ring-border-default"
         >
-          {items.map((it) => (
-            <button
-              key={it.label}
-              onClick={(e) => { e.stopPropagation(); setOpen(false); it.onClick(); }}
-              className={`block w-full px-3 py-2 text-left text-sm hover:bg-bg-base ${
-                it.destructive ? "text-error" : "text-text-primary"
-              }`}
-            >
-              {it.label}
-            </button>
-          ))}
+          {items.map((it) => {
+            const className = `block w-full px-3 py-2 text-left text-sm hover:bg-bg-base ${
+              it.destructive ? "text-error" : "text-text-primary"
+            }`;
+
+            if (it.href) {
+              return (
+                <Link
+                  key={it.label}
+                  href={it.href}
+                  className={className}
+                  onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+                >
+                  {it.label}
+                </Link>
+              );
+            }
+
+            return (
+              <button
+                key={it.label}
+                onClick={(e) => { e.stopPropagation(); setOpen(false); it.onClick?.(); }}
+                className={className}
+              >
+                {it.label}
+              </button>
+            );
+          })}
         </div>,
         document.body
       )}

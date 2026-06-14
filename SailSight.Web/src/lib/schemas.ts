@@ -31,6 +31,59 @@ export type StartLineLength = Schemas["StartLineLengthDto"];
 export type PlatformStats = Schemas["PlatformStatsDto"];
 export type AdminStats = Schemas["AdminStatsDto"];
 
+export interface NormalizedPosition {
+  t: number;
+  lat: number;
+  lon: number;
+  sog: number;
+  cog: number;
+  qW: number;
+  qX: number;
+  qY: number;
+  qZ: number;
+}
+
+export interface NormalizedWind {
+  t: number;
+  speed: number;
+  dir: number;
+}
+
+export interface NormalizedStw {
+  t: number;
+  speed: number;
+}
+
+export interface NormalizedDepth {
+  t: number;
+  depth: number;
+}
+
+export interface NormalizedTemperature {
+  t: number;
+  temp: number;
+}
+
+export interface NormalizedLoad {
+  t: number;
+  load: number;
+}
+
+export interface NormalizedShift {
+  t: number;
+  heading: number;
+}
+
+export interface NormalizedTelemetry {
+  positions: NormalizedPosition[];
+  wind: NormalizedWind[];
+  stw: NormalizedStw[];
+  depth: NormalizedDepth[];
+  temp: NormalizedTemperature[];
+  load: NormalizedLoad[];
+  shifts: NormalizedShift[];
+}
+
 export function n(v: number | string | null | undefined): number {
   if (v == null) return NaN;
   return typeof v === "number" ? v : parseFloat(v);

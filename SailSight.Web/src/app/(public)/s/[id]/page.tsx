@@ -2,7 +2,6 @@
 
 import { use, useEffect, useState } from "react";
 import React from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import type { SessionDetail, Race } from "@/lib/schemas";
@@ -15,7 +14,6 @@ import { Globe } from "lucide-react";
 
 export default function PublicSessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +67,7 @@ export default function PublicSessionDetailPage({ params }: { params: Promise<{ 
       {races.length > 0 && (
         <RaceTable
           races={races}
-          onRowClick={(r) => router.push(`/r/${r.id}`)}
+          rowHref={(r) => `/r/${r.id}`}
         />
       )}
     </div>

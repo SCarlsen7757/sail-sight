@@ -209,7 +209,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
         <RaceTable
           races={session.races as Race[]}
-          onRowClick={(r) => router.push(`/races/${r.id}`)}
+          rowHref={(r) => `/races/${r.id}`}
           showCourse
         />
 

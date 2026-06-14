@@ -138,9 +138,10 @@ export default function PublicSessionsPage() {
                 const href = s.isOwned ? `/sessions/${s.id}` : `/s/${s.id}`;
                 const title = s.displayName ?? s.fileName;
                 return (
-                  <tr key={String(s.id)} className="cursor-pointer border-t border-border-default text-sm hover:bg-bg-elevated/40">
+                  <tr key={String(s.id)} className="group relative cursor-pointer border-t border-border-default text-sm hover:bg-bg-elevated/40">
                     <td className="px-3 py-2">
-                      <Link href={href}>{title}</Link>
+                      <Link href={href} className="absolute inset-0 z-10" aria-label={`View session ${title}`} />
+                      <span className="font-medium text-action-primary">{title}</span>
                       {s.displayName && <div className="text-[11px] text-text-secondary">{s.fileName}</div>}
                       <SessionBadges session={s} />
                     </td>
@@ -149,10 +150,12 @@ export default function PublicSessionsPage() {
                     <td className="px-3 py-2 font-mono">{formatDuration(dur)}</td>
                     <td className="px-3 py-2">{n(s.raceCount)}</td>
                     <td className="px-3 py-2">
-                      <ThreeDotMenu items={[
-                        { label: "Open", onClick: () => location.assign(href) },
-                        ...(s.isOwned ? [{ label: "Delete", destructive: true, onClick: () => setConfirmDelete(s) }] : []),
-                      ]} />
+                      <div className="relative z-30">
+                        <ThreeDotMenu items={[
+                          { label: "Open", href: href },
+                          ...(s.isOwned ? [{ label: "Delete", destructive: true, onClick: () => setConfirmDelete(s) }] : []),
+                        ]} />
+                      </div>
                     </td>
                   </tr>
                 );

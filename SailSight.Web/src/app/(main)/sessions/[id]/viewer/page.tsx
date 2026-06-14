@@ -1,20 +1,29 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Gauge as GaugeIcon, LineChart as LineChartIcon } from "lucide-react";
-import { RaceMap } from "@/components/map/race-map";
-import { TelemetryPanels } from "@/components/charts/telemetry-panels";
+import { ArrowLeft, Gauge as GaugeIcon, LineChart as LineChartIcon, ChevronRight } from "lucide-react";
+const RaceMap = dynamic(() => import("@/components/map/race-map").then((m) => m.RaceMap), {
+  ssr: false,
+  loading: () => <div className="h-96 w-full animate-pulse rounded-lg bg-bg-elevated" />,
+});
+const TelemetryPanels = dynamic(() => import("@/components/charts/telemetry-panels").then((m) => m.TelemetryPanels), {
+  ssr: false,
+  loading: () => <div className="h-48 w-full animate-pulse rounded-lg bg-bg-elevated" />,
+});
 import { TimeWindowSlicer } from "@/components/charts/time-window-slicer";
 import { PlaybackControls } from "@/components/race-viewer/playback-controls";
-import { CompassRose, Inclinometer, NumericGauge } from "@/components/gauges/gauges";
+import { CompassRose, Inclinometer, NumericGauge, HeelTrimCard } from "@/components/gauges/gauges";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { ErrorBanner } from "@/components/ui/error-banner";
-import type { SessionDetail, Position, Boat } from "@/lib/schemas";
+import type { SessionDetail, NormalizedPosition, Boat } from "@/lib/schemas";
 import { n } from "@/lib/schemas";
 import { useUnitPrefs } from "@/store/settings";
 import { convertSpeed, radiansToDegrees, speedUnitLabel } from "@/lib/units";
 import { useRaceViewerStore } from "@/store/race-viewer";
+import { normalizePositions } from "@/lib/normalization";
+import { usePlaybackState } from "@/hooks/use-playback-state";
 
 interface PageProps { params: Promise<{ id: string }>; }
 
@@ -30,14 +39,13 @@ function quatToHeelTrim(w: number, x: number, y: number, z: number) {
 export default function SessionViewerPage({ params }: PageProps) {
   const { id } = use(params);
   const { prefs } = useUnitPrefs();
-  const position = useRaceViewerStore((s) => s.position);
   const showGauges = useRaceViewerStore((s) => s.showGauges);
   const showCharts = useRaceViewerStore((s) => s.showCharts);
   const windowStart = useRaceViewerStore((s) => s.windowStart);
   const windowEnd = useRaceViewerStore((s) => s.windowEnd);
 
   const [session, setSession] = useState<SessionDetail | null>(null);
-  const [positions, setPositions] = useState<Position[] | null>(null);
+  const [positions, setPositions] = useState<NormalizedPosition[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,8 +57,11 @@ export default function SessionViewerPage({ params }: PageProps) {
         setSession(s);
         const firstRaceId = s.races.length > 0 ? s.races[0].id : null;
         if (firstRaceId) {
-          const p: Position[] = await fetch(`/api/v1/races/${firstRaceId}/telemetry/positions`).then((r) => r.ok ? r.json() : []);
-          if (alive) setPositions(p ?? []);
+          const p: any[] = await fetch(`/api/v1/races/${firstRaceId}/telemetry/positions`).then((r) => r.ok ? r.json() : []);
+          if (alive) {
+            const hz = n(s.telemetryRateHz) > 0 ? n(s.telemetryRateHz) : 1;
+            setPositions(normalizePositions(p, hz));
+          }
         } else {
           setPositions([]);
         }
@@ -63,50 +74,38 @@ export default function SessionViewerPage({ params }: PageProps) {
   const endMs = session ? new Date(session.endedAt).getTime() : 0;
   const duration = (endMs - startMs) / 1000;
 
-  const targetMs = startMs + position * 1000;
-  const currentPos = useMemo(() => {
-    if (!positions || !positions.length) return null;
-    let lo = 0, hi = positions.length - 1, best = 0, bestD = Infinity;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      const t = new Date(positions[mid].time).getTime();
-      const d = Math.abs(t - targetMs);
-      if (d < bestD) { bestD = d; best = mid; }
-      if (t < targetMs) lo = mid + 1; else hi = mid - 1;
-    }
-    return positions[best];
-  }, [positions, targetMs]);
-
-  const playbackArrow = currentPos ? { lat: n(currentPos.latitude), lon: n(currentPos.longitude), cog: n(currentPos.courseOverGround) } : null;
-  const heelTrim = currentPos ? quatToHeelTrim(n(currentPos.quaternionW), n(currentPos.quaternionX), n(currentPos.quaternionY), n(currentPos.quaternionZ)) : null;
+  const { currentPos, playbackArrow } = usePlaybackState(positions, startMs);
+  const heelTrim = currentPos ? quatToHeelTrim(currentPos.qW, currentPos.qX, currentPos.qY, currentPos.qZ) : null;
 
   const windowStartMs = startMs + windowStart * 1000;
   const windowEndMs = startMs + windowEnd * 1000;
   const isWindowNarrowed = windowStart > 0 || windowEnd < duration;
   const windowPositions = useMemo(
     () => (showCharts && isWindowNarrowed)
-      ? positions?.filter((p) => {
-          const t = new Date(p.time).getTime();
-          return t >= windowStartMs && t <= windowEndMs;
-        }) ?? null
+      ? positions?.filter((p) => p.t >= windowStartMs && p.t <= windowEndMs) ?? null
       : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [positions, windowStartMs, windowEndMs, showCharts, isWindowNarrowed]
   );
 
   if (error) return <ErrorBanner message={error} />;
-  if (!session) return <SkeletonLoader className="h-96" />;
+  if (!session || !positions) return <SkeletonLoader className="h-96" />;
 
   return (
     <div className="flex flex-col gap-3 lg:h-[calc(100vh-3rem)]">
-      {/* Compact header bar */}
-      <div className="flex items-center gap-2 py-1">
-        <Link href={`/sessions/${id}`} className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary">
-          <ArrowLeft className="h-4 w-4" /> Back
+      {/* Compact breadcrumb header bar */}
+      <div className="flex items-center gap-2 py-1 text-sm">
+        <Link href="/sessions" className="text-text-secondary hover:text-text-primary transition-colors">
+          Sessions
         </Link>
-        <span className="text-text-secondary">·</span>
-        <h1 className="text-base font-semibold">Session viewer</h1>
-        <span className="text-sm text-text-secondary">· {session.fileName}</span>
+        <ChevronRight className="h-3.5 w-3.5 text-text-muted" />
+        <Link href={`/sessions/${id}`} className="text-text-secondary hover:text-text-primary transition-colors">
+          Session
+        </Link>
+        <ChevronRight className="h-3.5 w-3.5 text-text-muted" />
+        <h1 className="text-base font-semibold text-text-primary">Viewer</h1>
+        <span className="text-sm text-text-secondary hidden sm:inline">· {session.fileName}</span>
+        
         <div className="ml-auto flex items-center gap-1">
           <button
             onClick={() => useRaceViewerStore.getState().setShowGauges(!showGauges)}
@@ -141,8 +140,8 @@ export default function SessionViewerPage({ params }: PageProps) {
         <div className="flex flex-col gap-4 flex-1 min-h-0 lg:overflow-y-auto">
           {showGauges && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <NumericGauge label="SOG" value={currentPos ? convertSpeed(n(currentPos.speedOverGround), prefs.boatSpeed) : null} unit={speedUnitLabel(prefs.boatSpeed)} big />
-              <CompassRose headingDeg={currentPos ? n(currentPos.courseOverGround) : null} />
+              <NumericGauge label="SOG" value={currentPos ? convertSpeed(currentPos.sog, prefs.boatSpeed) : null} unit={speedUnitLabel(prefs.boatSpeed)} big />
+              <CompassRose headingDeg={currentPos ? radiansToDegrees(currentPos.cog) : null} />
               <Inclinometer label="Heel (°)" value={heelTrim?.heel ?? null} range={45} />
               <Inclinometer label="Trim (°)" value={heelTrim?.trim ?? null} range={10} />
             </div>
@@ -151,7 +150,9 @@ export default function SessionViewerPage({ params }: PageProps) {
           {showCharts && session.races.length > 0 && (
             <>
               <TimeWindowSlicer raceStartOffset={0} />
-              <TelemetryPanels raceId={String(session.races[0].id)} raceStartMs={startMs} raceStartOffset={0} telemetryRateHz={n(session.telemetryRateHz)} />
+              <div className="flex flex-col gap-4">
+                <TelemetryPanels raceId={String(session.races[0].id)} raceStartMs={startMs} raceStartOffset={0} telemetryRateHz={n(session.telemetryRateHz)} />
+              </div>
             </>
           )}
         </div>
