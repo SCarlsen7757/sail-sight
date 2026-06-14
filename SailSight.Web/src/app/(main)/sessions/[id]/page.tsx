@@ -3,7 +3,6 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useNavigate } from "@/hooks/useNavigate";
 import { api } from "@/lib/api";
 import type { SessionDetail, Boat, Course, Race, SessionShare } from "@/lib/schemas";
 import { n } from "@/lib/schemas";
@@ -43,7 +42,6 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const { id } = use(params);
   const router = useRouter();
   const toast = useToast();
-  const { navigate, isPending } = useNavigate();
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [boats, setBoats] = useState<Boat[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -159,7 +157,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   };
 
   if (error) return <ErrorBanner message={error} onRetry={load} />;
-  if (isPending || !session) return <PageSkeleton />;
+  if (!session) return <PageSkeleton />;
 
   const dur = (new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000;
   const sharedTeamIds = new Set(shares.map((s) => s.teamId));
@@ -200,18 +198,18 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
             <div><dt className="text-text-secondary">Visibility</dt><dd>{session.isPublic ? "Public" : "Private"}</dd></div>
           </dl>
           <div className="mt-4">
-            <button
-              onClick={() => navigate(`/sessions/${id}/viewer`)}
+            <Link
+              href={`/sessions/${id}/viewer`}
               className="inline-flex items-center rounded-md border border-border-default bg-bg-surface px-3 py-1.5 text-sm font-medium hover:bg-bg-elevated"
             >
               View session data
-            </button>
+            </Link>
           </div>
         </Card>
 
         <RaceTable
           races={session.races as Race[]}
-          onRowClick={(r) => navigate(`/races/${r.id}`)}
+          onRowClick={(r) => router.push(`/races/${r.id}`)}
           showCourse
         />
 
