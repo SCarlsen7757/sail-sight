@@ -62,6 +62,24 @@ export function PointCloudBackground() {
     };
     window.addEventListener("mousemove", handleMouseMove);
 
+    // Track physical device orientation (gyroscopic/tilt parallax) on mobile
+    const handleDeviceOrientation = (e: DeviceOrientationEvent) => {
+      if (e.beta === null || e.gamma === null) return;
+      
+      // Normalize beta (tilt front/back, standard hold is around 60 deg)
+      const betaNorm = (e.beta - 60) / 25;
+      // Normalize gamma (tilt left/right)
+      const gammaNorm = e.gamma / 25;
+
+      const clampedBeta = Math.max(-1, Math.min(1, betaNorm));
+      const clampedGamma = Math.max(-1, Math.min(1, gammaNorm));
+
+      // Slightly larger maximum shifts for gorgeous tactile physical feedback
+      mouseRef.current.targetX = clampedGamma * 0.18;
+      mouseRef.current.targetY = clampedBeta * 0.14;
+    };
+    window.addEventListener("deviceorientation", handleDeviceOrientation);
+
     // Main render loop
     const render = () => {
       // Clear with dark-space background matching your visual style
@@ -179,6 +197,7 @@ export function PointCloudBackground() {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("deviceorientation", handleDeviceOrientation);
     };
   }, []);
 
