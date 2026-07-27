@@ -137,6 +137,37 @@ This starts:
 - **API** on port `8080`
 - **Web UI** on port `8081`
 
+This builds from source and is aimed at development. To run released images instead, see below.
+
+### Self-hosting with pre-built images
+
+`docker-compose.ghcr.yml` pulls published images from GitHub Container Registry, so it needs no
+source checkout — just the one file:
+
+```bash
+curl -O https://raw.githubusercontent.com/SCarlsen7757/sail-sight/main/docker-compose.ghcr.yml
+printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -base64 24)" > .env
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+`POSTGRES_PASSWORD` is the only required value; Compose refuses to start without it rather than
+falling back to a shipped default. Leave `AUTH_ADMIN_PASSWORD` unset and the API logs a one-time
+setup URL for the bootstrap admin instead:
+
+```bash
+docker compose -f docker-compose.ghcr.yml logs api | grep -i setup
+```
+
+Pin a version with `SAILSIGHT_TAG` in `.env` — `latest` (newest release), `1.2` (newest patch on
+that minor line), `1.2.3` (exact), or `main` (bleeding edge, built on every merge). Upgrade with
+`docker compose -f docker-compose.ghcr.yml pull` followed by `up -d`. The file's header comments
+document every supported variable.
+
+| Image | Tags |
+| --- | --- |
+| `ghcr.io/scarlsen7757/sail-sight-api` | `latest` `1.2.3` `1.2` `1` `main` `sha-<short>` |
+| `ghcr.io/scarlsen7757/sail-sight-web` | `latest` `1.2.3` `1.2` `1` `main` `sha-<short>` |
+
 ### Development (Visual Studio 2022)
 
 The solution is configured for a **full Docker Compose dev loop** directly from Visual Studio. Everything — database, API, and web frontend — runs in Docker with live hot-reload.
