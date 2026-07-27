@@ -7,10 +7,6 @@ on:
         description: Whether to push the image to the registry
         type: boolean
         required: true
-      version:
-        description: Image version tag (e.g. 1.2.3 or pr-42)
-        type: string
-        required: true
 
 jobs:
   docker-web:
@@ -35,12 +31,31 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Keep this tag list identical to _docker-api.yml — the two images are
+      # released together and must carry matching tags.
+      #
+      #   tag v1.2.3  -> 1.2.3, 1.2, 1, latest
+      #   push main   -> main, sha-a1b2c3d
+      #   PR #42      -> pr-42 (built, never pushed)
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/sail-sight-web
+          flavor: latest=auto
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=ref,event=branch
+            type=ref,event=pr,prefix=pr-
+            type=sha,format=short
+
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
           context: SailSight.Web
           file: SailSight.Web/Dockerfile
           push: ${{ inputs.push }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/sail-sight-web:${{ inputs.version }}
-            ${{ inputs.push && format('ghcr.io/{0}/sail-sight-web:latest', github.repository_owner) || '' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

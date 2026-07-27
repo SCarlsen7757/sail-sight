@@ -6,21 +6,6 @@ on:
       - main
 
 jobs:
-  version:
-    name: Get version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.gitversion.outputs.semVer }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Get GitVersion
-        id: gitversion
-        uses: ./.github/actions/get-gitversion
-
   build-api:
     name: Build API
     runs-on: ubuntu-latest
@@ -43,16 +28,12 @@ jobs:
 
   docker-api:
     name: Docker Build — API
-    needs: version
     uses: ./.github/workflows/_docker-api.yml
     with:
       push: false
-      version: pr-${{ github.event.pull_request.number }}
 
   docker-web:
     name: Docker Build — Web
-    needs: version
     uses: ./.github/workflows/_docker-web.yml
     with:
       push: false
-      version: pr-${{ github.event.pull_request.number }}

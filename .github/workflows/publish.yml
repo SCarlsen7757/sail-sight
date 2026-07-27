@@ -1,44 +1,59 @@
 name: Publish
 
+# Cutting a release is a single action: push a version tag.
+#
+#   git tag v1.2.3 && git push origin v1.2.3
+#
+#     -> images pushed as 1.2.3, 1.2, 1, latest
+#     -> GitHub Release published, notes grouped by label
+#        via .github/release.yml
+#
+# The release is created only after both images push successfully, so a
+# failed build can never leave a release pointing at images that don't exist.
+
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
 
 jobs:
-  version:
-    name: Get version
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.gitversion.outputs.majorMinorPatch }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Get GitVersion
-        id: gitversion
-        uses: ./.github/actions/get-gitversion
-
   docker-api:
     name: Docker Build & Push — API
-    needs: version
     uses: ./.github/workflows/_docker-api.yml
     with:
       push: true
-      version: ${{ needs.version.outputs.version }}
     permissions:
       contents: read
       packages: write
 
   docker-web:
     name: Docker Build & Push — Web
-    needs: version
     uses: ./.github/workflows/_docker-web.yml
     with:
       push: true
-      version: ${{ needs.version.outputs.version }}
     permissions:
       contents: read
       packages: write
+
+  release:
+    name: Publish GitHub Release
+    needs: [docker-api, docker-web]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # --verify-tag refuses to invent a release for a tag that isn't in the
+      # repo; --generate-notes is what reads .github/release.yml.
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >
+          gh release create "$GITHUB_REF_NAME"
+          --title "$GITHUB_REF_NAME"
+          --generate-notes
+          --verify-tag

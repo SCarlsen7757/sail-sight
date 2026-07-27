@@ -1,0 +1,37 @@
+name: Main
+
+# Rolling build of the tip of main, published as the `main` and `sha-<short>`
+# image tags. This is the bleeding-edge stream — releases come from version
+# tags instead (see publish.yml), and `latest` always points at the newest
+# release, never at main.
+#
+# It also catches semantic conflicts between two PRs that each passed CI
+# individually but break once both are merged.
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: main
+  cancel-in-progress: true
+
+jobs:
+  docker-api:
+    name: Docker Build & Push — API
+    uses: ./.github/workflows/_docker-api.yml
+    with:
+      push: true
+    permissions:
+      contents: read
+      packages: write
+
+  docker-web:
+    name: Docker Build & Push — Web
+    uses: ./.github/workflows/_docker-web.yml
+    with:
+      push: true
+    permissions:
+      contents: read
+      packages: write

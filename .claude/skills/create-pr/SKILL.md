@@ -1,20 +1,22 @@
 ---
 name: create-pr
-description: Open a pull request for SailSight with correctly applied labels. Use whenever the user asks to create/open/raise a PR, or after finishing work on a feature branch. Covers the repo's flat label scheme (type + area + meta), pre-PR build checks, and the GitVersion branch conventions.
+description: Open a pull request for SailSight with correctly applied labels. Use whenever the user asks to create/open/raise a PR, or after finishing work on a feature branch. Covers the repo's flat label scheme (type + scope + meta), pre-PR build checks, and how PR labels feed the tag-driven release notes.
 ---
 
 # Creating a pull request for SailSight
 
-Base branch is always `main`. CI runs on every PR to `main`: version (GitVersion), Build API,
-Build Web, and non-pushing Docker builds for both images.
+Base branch is always `main`. There is no `develop` branch — just `main` plus feature branches,
+and small PRs merged often. CI runs on every PR to `main`: Build API, Build Web, and non-pushing
+Docker builds for both images.
+
+Releases are cut separately by pushing a version tag, never by merging (see *Releasing* below).
 
 ## 1. Check the branch
 
 Never open a PR from `main`. If the current branch is `main`, create a feature branch first.
 
-GitVersion (`GitVersion.yml`) only recognises feature branches matching `^features?[\/-]` — so
-`feature/foo` or `feature-foo`. A branch named anything else still builds, but gets no
-`{BranchName}` version label. Match the existing style: `feature/<area>/<short-description>`.
+Branch naming is a convention only — nothing parses it since GitVersion was removed. Match the
+existing style: `feature/<scope>/<short-description>`.
 
 ## 2. Verify the work builds
 
@@ -94,7 +96,7 @@ Map from the changed paths:
 | `SailSight.Shared/**` | `shared` |
 | `SailSight.Api/Migrations/**`, `Data/Migrations/**`, hypertables, EF model | `database` |
 | `SailSight.Api/Auth/**`, `(auth)` routes, Identity, PAT, invitations, teams | `auth` |
-| `.github/**`, `Dockerfile*`, `docker-compose*.yml`, `GitVersion.yml` | `infra` |
+| `.github/**`, `Dockerfile*`, `docker-compose*.yml` | `infra` |
 
 The teal labels are the ones that need judgement, because a path match alone doesn't settle them:
 
@@ -117,7 +119,7 @@ blue, and if it's both it's teal.
 
 | Label | When |
 | --- | --- |
-| `breaking change` | Major version bump, a new API version, or a migration that isn't backward-compatible. GitVersion drives releases off `main`, so flag this explicitly. |
+| `breaking change` | A new API version, or a migration that isn't backward-compatible. Nothing computes the version automatically — this label is the signal to you that the next tag needs a major bump. |
 | `dependencies` | Dependency bumps (this is Dependabot's default label name) |
 | `blocked` | Waiting on external work — don't merge |
 | `needs info` | Waiting on more detail before it can proceed |
@@ -159,6 +161,30 @@ If you add or rename a type label, update `.github/release.yml` in the same PR.
 | Correct the VKX format spec | `documentation` `parser` |
 | Redeem-invitation page won't submit | `bug` `web` `auth` |
 | Rotate PAT hashing to a stronger algorithm | `security` `api` `auth` `database` |
+
+## Releasing
+
+Merging never releases anything. A merge to `main` publishes rolling `main` and `sha-<short>`
+image tags; `latest` is untouched. Cutting a release is one action:
+
+```bash
+git tag v1.2.3 && git push origin v1.2.3
+```
+
+That triggers `.github/workflows/publish.yml`, which pushes `1.2.3`, `1.2`, `1` and `latest` for
+both images, then publishes a GitHub Release with notes grouped by label. The release is created
+only after both images push, so a failed build can't leave a release pointing at missing images.
+
+Nothing computes the version for you — picking the number is a judgement call. Check what's landed
+since the last tag and let the labels decide:
+
+```bash
+git log $(git describe --tags --abbrev=0)..main --oneline
+```
+
+Any `breaking change` since the last tag means a major bump; any `feature` means minor; otherwise
+patch. A prerelease tag (`v1.2.3-rc.1`) publishes its exact version but deliberately does **not**
+move `latest`.
 
 ## Note on `parser`
 
