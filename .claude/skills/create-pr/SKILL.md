@@ -54,8 +54,8 @@ only dimension cue, so applying the right combination matters:
 | Family | Colour | Rule |
 | --- | --- | --- |
 | Type | warm (red → tan) | **Exactly one.** Every PR gets one. |
-| Area | uniform blue `#1d76db` | **One or more.** Every PR gets at least one. |
-| Meta / workflow | neutrals, purple, teal | Only when it applies. |
+| Scope | blue / teal / green | **One or more.** Every PR gets at least one. |
+| Meta / workflow | neutrals, purple | Only when it applies. |
 
 ### Type — pick exactly one
 
@@ -63,17 +63,26 @@ only dimension cue, so applying the right combination matters:
 | --- | --- |
 | `bug` | Something isn't working as intended |
 | `security` | Auth, authorization, or data-exposure concern |
-| `feature` | New capability that doesn't exist yet |
-| `enhancement` | Improvement to something that already exists |
+| `feature` | New capability, or an improvement to an existing one |
 | `performance` | Speed, memory, query cost, or render cost |
 | `refactor` | Internal restructuring with no behaviour change |
 | `documentation` | README, VKX format spec, or code comments |
 | `chore` | Build, tooling, dependencies, or cleanup |
 
-`feature` vs `enhancement` is the common ambiguity: did the capability exist before the PR? If yes
-it's `enhancement`.
+`feature` deliberately covers both brand-new capabilities and improvements to existing ones — the
+old `feature` / `enhancement` split forced a judgement call that carried no useful signal. If a PR
+changes behaviour for the better and isn't fixing a defect, it's `feature`.
 
-### Area — pick every one the diff touches
+### Scope — pick every one the diff touches
+
+Scope is a **single flat namespace** answering "which part of the product is this?" — but its
+members aren't all the same kind of thing, and the colour says which kind:
+
+| Colour | Kind | Labels |
+| --- | --- | --- |
+| Blue `#1d76db` | **Project** — a build artifact, a place in the tree | `api` `web` `shared` `infra` |
+| Teal `#0f8b8d` | **Hybrid** — both a place *and* a domain | `parser` `database` `auth` |
+| Green | **Domain** — a product feature, no single home | *(reserved, none yet)* |
 
 Map from the changed paths:
 
@@ -87,15 +96,22 @@ Map from the changed paths:
 | `SailSight.Api/Auth/**`, `(auth)` routes, Identity, PAT, invitations, teams | `auth` |
 | `.github/**`, `Dockerfile*`, `docker-compose*.yml`, `GitVersion.yml` | `infra` |
 
-Two that need judgement:
+The teal labels are the ones that need judgement, because a path match alone doesn't settle them:
 
-- **`auth` is cross-cutting**, not a project folder. It pairs with `api` or `web` rather than
+- **`auth`** is cross-cutting, not a project folder. It pairs with `api` or `web` rather than
   replacing them — an invitation-flow UI change is `web` + `auth`.
-- **`database` applies to schema changes**, not to any code that happens to query the DB. A new
-  migration or hypertable is `database`; a controller running a new LINQ query is just `api`.
+- **`database`** means schema changes, not any code that happens to query the DB. A new migration
+  or hypertable is `database`; a controller running a new LINQ query is just `api`.
+- **`parser`** is both the project and the VKX-format domain. Once it ships as a NuGet package the
+  project half moves out and only the domain half stays meaningful here.
 
-Generated files don't count toward areas on their own — a PR that only changes `api-types.ts`
+Generated files don't count toward scope on their own — a PR that only changes `api-types.ts`
 because the API changed is `api` + `shared`, not `web`.
+
+**Adding new scope labels:** green is reserved for pure product domains (`map`, `playback`,
+`charts`, `ingestion`, `race-analysis`, …) for when `web` and `api` stop narrowing usefully. Put a
+new label in green only if it has no single home in the tree; if it maps to one directory it's
+blue, and if it's both it's teal.
 
 ### Meta — add when it applies
 
@@ -112,7 +128,7 @@ special-cases them for the contribute page.
 ### Apply them
 
 ```bash
-gh pr edit <number> --add-label "enhancement" --add-label "web" --add-label "auth"
+gh pr edit <number> --add-label "feature" --add-label "web" --add-label "auth"
 ```
 
 Labels can also go on `gh pr create` directly with repeated `--label` flags. If a label doesn't
@@ -122,7 +138,7 @@ exist, `gh` fails the whole command — check `gh label list` rather than invent
 
 | PR | Labels |
 | --- | --- |
-| Rework the current-data dashboard readouts | `enhancement` `web` |
+| Rework the current-data dashboard readouts | `feature` `web` |
 | Fix heel gauge drifting during scrub | `bug` `web` |
 | Add a weather-overlay endpoint + DTO + UI | `feature` `api` `shared` `web` |
 | Add mark rounding radius (new column + migration) | `feature` `api` `database` `shared` `web` |
@@ -130,6 +146,8 @@ exist, `gh` fails the whole command — check `gh label list` rather than invent
 | Bump Next.js | `chore` `dependencies` `web` |
 | Move `/api/v1` to `/api/v2` | `feature` `api` `shared` `breaking change` |
 | Correct the VKX format spec | `documentation` `parser` |
+| Redeem-invitation page won't submit | `bug` `web` `auth` |
+| Rotate PAT hashing to a stronger algorithm | `security` `api` `auth` `database` |
 
 ## Note on `parser`
 
