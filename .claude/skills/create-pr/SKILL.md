@@ -134,6 +134,17 @@ gh pr edit <number> --add-label "feature" --add-label "web" --add-label "auth"
 Labels can also go on `gh pr create` directly with repeated `--label` flags. If a label doesn't
 exist, `gh` fails the whole command — check `gh label list` rather than inventing a new one.
 
+### Why the type label matters at release time
+
+`.github/release.yml` groups generated release notes by **type** label, so the one type label you
+pick decides which section the PR lands in. A PR merged without one falls into *Uncategorised*.
+
+Categories match in order and a PR lands in the **first** one it matches, so `breaking change` and
+`security` outrank the plain type label a PR also carries — a breaking `feature` is filed under
+Breaking Changes, not Features. Scope labels don't affect release notes at all.
+
+If you add or rename a type label, update `.github/release.yml` in the same PR.
+
 ## 5. Worked examples
 
 | PR | Labels |
