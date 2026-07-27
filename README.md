@@ -147,8 +147,25 @@ source checkout — just the one file:
 ```bash
 curl -O https://raw.githubusercontent.com/SCarlsen7757/sail-sight/main/docker-compose.ghcr.yml
 printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -base64 24)" > .env
+
+# The database is bind-mounted to ./data/db on the host. Create it and hand it
+# to the uid Postgres runs as inside the image, or the container won't start.
+mkdir -p ./data/db
+sudo chown -R "$(docker run --rm timescale/timescaledb-ha:pg16 id -u)" ./data/db
+
 docker compose -f docker-compose.ghcr.yml up -d
 ```
+
+Database files live in `./data/db` rather than a Docker-managed volume, so they sit in a path you
+control. Override it with `DATA_DIR` in `.env`. Two constraints come with bind mounts: the folder
+must be **empty** on first start (Postgres refuses to initialise into a non-empty directory), and it
+must be **writable by the container's Postgres uid** — a named volume inherits that ownership
+automatically, a bind mount does not, and Docker creates a missing folder owned by `root`. Hence the
+`chown` above.
+
+Copying the folder is not a safe backup while the stack is running — use
+`docker compose -f docker-compose.ghcr.yml exec db pg_dump -U sailsight sailsight > dump.sql`, or
+stop the stack first.
 
 `POSTGRES_PASSWORD` is the only required value; Compose refuses to start without it rather than
 falling back to a shipped default. Leave `AUTH_ADMIN_PASSWORD` unset and the API logs a one-time

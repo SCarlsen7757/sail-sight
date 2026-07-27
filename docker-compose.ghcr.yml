@@ -5,6 +5,12 @@
 #
 #   curl -O https://raw.githubusercontent.com/SCarlsen7757/sail-sight/main/docker-compose.ghcr.yml
 #   printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -base64 24)" > .env
+#
+#   # Database files live on the host. Create the folder and give it to the
+#   # uid Postgres runs as inside the image, or the container cannot start:
+#   mkdir -p ./data/db
+#   sudo chown -R "$(docker run --rm timescale/timescaledb-ha:pg16 id -u)" ./data/db
+#
 #   docker compose -f docker-compose.ghcr.yml up -d
 #
 # Then open http://localhost:8081. On first start the API logs a one-time setup
@@ -18,12 +24,30 @@
 # .env reference — POSTGRES_PASSWORD is required, everything else is optional:
 #
 #   POSTGRES_PASSWORD=<required, no default>
+#   DATA_DIR=./data               # host folder holding the database files
 #   SAILSIGHT_TAG=latest          # or 1.2.3 / 1.2 / 1 to pin, or main for dev builds
 #   PUBLIC_BASE_URL=http://localhost:8081
 #   AUTH_ADMIN_EMAIL=admin@example.com
 #   AUTH_ADMIN_PASSWORD=          # leave empty to use the logged setup URL
 #   RACE_SUMMARY_API_KEY=         # optional, enables AI race summaries
 # ---------------------------------------------------------------------------
+#
+# On the data folder
+# ------------------
+# ${DATA_DIR}/db is a bind mount, so the database files sit in a path you
+# choose rather than inside Docker's storage area.
+#
+#   * It must be EMPTY on first start. Postgres refuses to initialise into a
+#     non-empty directory, so a stray .gitkeep or lost+found will fail the boot.
+#   * It must be writable by the uid Postgres runs as in the image. A named
+#     volume inherits that ownership automatically; a bind mount does not, and
+#     Docker creates a missing host folder owned by root. Hence the chown above.
+#   * Copying the folder is NOT a safe backup while the container is running.
+#     Use `docker compose exec db pg_dump -U sailsight sailsight > dump.sql`,
+#     or stop the stack first.
+#   * Running two stacks (e.g. prod and test) on one host? Give each its own
+#     DATA_DIR as well as its own project name (-p), or they will share a
+#     database and the test stack's migrations will hit production data.
 
 # Fixed project name so the stack isn't named after whatever directory you
 # happen to put this file in.
@@ -41,9 +65,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-sailsight}
     volumes:
       # Holds telemetry *and* the ASP.NET Data Protection keys (persisted to
-      # the database, not the filesystem). Losing this volume invalidates every
+      # the database, not the filesystem). Losing this folder invalidates every
       # auth cookie — back it up, don't just recreate it.
-      - database:/var/lib/postgresql/data
+      # See the "On the data folder" notes at the top of this file.
+      - ${DATA_DIR:-./data}/db:/var/lib/postgresql/data
     # Not published to the host. Add a ports mapping only if you need external
     # DB tooling, and bind it to 127.0.0.1 if you do.
     healthcheck:
@@ -99,6 +124,3 @@ services:
       API_BASE_URL: http://api:8080
     ports:
       - "${WEB_PORT:-8081}:3000"
-
-volumes:
-  database:

@@ -429,3 +429,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Self-hosting data folder — bind-mounted by docker-compose.ghcr.yml.
+# Contains live PostgreSQL files; must never be committed.
+/data/
