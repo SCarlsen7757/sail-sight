@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -76,13 +78,13 @@ export default function MarksPage() {
     };
     const isNew = panelId === "new";
     const url = isNew ? "/api/v1/marks" : `/api/v1/marks/${panelId}`;
-    const res = await fetch(url, { method: isNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const res = await browserRequest(url, { method: isNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) { toast.push({ kind: "success", message: isNew ? "Mark created." : "Mark saved." }); setPanelId(null); load(); }
     else toast.push({ kind: "error", message: "Save failed." });
   };
 
   const doDelete = async (m: Mark) => {
-    const res = await fetch(`/api/v1/marks/${m.id}`, { method: "DELETE" });
+    const res = await browserRequest(`/api/v1/marks/${m.id}`, { method: "DELETE" });
     setConfirmDelete(null);
     if (res.ok || res.status === 204) { toast.push({ kind: "success", message: "Mark deleted." }); load(); }
     else if (res.status === 409) toast.push({ kind: "error", message: "Mark is used in a course." });

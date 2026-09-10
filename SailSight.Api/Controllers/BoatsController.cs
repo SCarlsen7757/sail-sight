@@ -1,3 +1,4 @@
+using SailSight.Api.Helpers;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,24 +25,24 @@ public class BoatsController(AppDbContext db, ICurrentUser currentUser) : Contro
         {
             var publicBoats = await db.Boats
                 .Where(b => b.IsPublic)
-                .OrderBy(b => b.Name)
+                .OrderBy(b => b.Name).ThenBy(b => b.Id)
                 .Select(b => new BoatDto(
                     b.Id, b.Name, b.SailNumber,
                     new BoatClassSummaryDto(b.BoatClass.Id, b.BoatClass.Name, b.BoatClass.Length, b.BoatClass.Width, b.BoatClass.Weight),
                     b.Description, b.IsPublic, b.CreatedAt))
-                .ToListAsync(ct);
+                .PageAsync(HttpContext, ct);
             return Ok(publicBoats);
         }
 
         var userId = currentUser.UserId;
         var boats = await db.Boats
             .Where(b => b.OwnerUserId == userId)
-            .OrderBy(b => b.Name)
+            .OrderBy(b => b.Name).ThenBy(b => b.Id)
             .Select(b => new BoatDto(
                 b.Id, b.Name, b.SailNumber,
                 new BoatClassSummaryDto(b.BoatClass.Id, b.BoatClass.Name, b.BoatClass.Length, b.BoatClass.Width, b.BoatClass.Weight),
                 b.Description, b.IsPublic, b.CreatedAt))
-            .ToListAsync(ct);
+            .PageAsync(HttpContext, ct);
         return Ok(boats);
     }
 
@@ -143,23 +144,18 @@ public class BoatsController(AppDbContext db, ICurrentUser currentUser) : Contro
             .FirstOrDefaultAsync(ct);
         if (boat is null) return NotFound();
 
-        // Stats include all sessions regardless of visibility — only aggregate numbers are exposed.
-        var sessionQuery = db.Sessions.Where(s => s.BoatId == id);
-
-        var sessions = await sessionQuery
-            .Include(s => s.Races)
-            .ToListAsync(ct);
-
-        var races = sessions.SelectMany(s => s.Races).ToList();
-
+        var sessions = db.Sessions.Where(s => s.BoatId == id && (isOwner || s.IsPublic));
+        var races = db.Races.Where(r => sessions.Select(s => s.Id).Contains(r.SessionId));
+        var sessionCount = await sessions.CountAsync(ct);
+        var raceCount = await races.CountAsync(ct);
         var dto = new BoatStatsDto(
             boat.Id, boat.Name, boat.SailNumber,
             new BoatClassSummaryDto(boat.BoatClass.Id, boat.BoatClass.Name, boat.BoatClass.Length, boat.BoatClass.Width, boat.BoatClass.Weight),
-            sessions.Count, races.Count,
-            sessions.Sum(s => (s.EndedAt - s.StartedAt).TotalSeconds),
-            races.Where(r => r.EndedAt.HasValue).Sum(r => (r.EndedAt!.Value - r.StartedAt).TotalSeconds),
-            races.Where(r => r.EndedAt.HasValue).Sum(r => r.SailedDistanceMeters),
-            races.Count > 0 ? races.Max(r => r.MaxSpeedOverGround) : 0f);
+            sessionCount, raceCount,
+            await sessions.SumAsync(s => (s.EndedAt - s.StartedAt).TotalSeconds, ct),
+            await races.Where(r => r.EndedAt.HasValue).SumAsync(r => (r.EndedAt!.Value - r.StartedAt).TotalSeconds, ct),
+            await races.Where(r => r.EndedAt.HasValue).SumAsync(r => r.SailedDistanceMeters, ct),
+            raceCount > 0 ? await races.MaxAsync(r => r.MaxSpeedOverGround, ct) : 0f);
         return Ok(dto);
     }
 }

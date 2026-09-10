@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import dynamic from "next/dynamic";
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -50,14 +52,14 @@ export default function SessionViewerPage({ params }: PageProps) {
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/v1/sessions/${id}`)
+    browserRequest(`/api/v1/sessions/${id}`)
       .then((r) => r.ok ? r.json() as Promise<SessionDetail> : Promise.reject(r.status))
       .then(async (s) => {
         if (!alive) return;
         setSession(s);
         const firstRaceId = s.races.length > 0 ? s.races[0].id : null;
         if (firstRaceId) {
-          const p: any[] = await fetch(`/api/v1/races/${firstRaceId}/telemetry/positions`).then((r) => r.ok ? r.json() : []);
+          const p: any[] = await browserRequest(`/api/v1/races/${firstRaceId}/telemetry/positions`).then((r) => r.ok ? r.json() : []);
           if (alive) {
             const hz = n(s.telemetryRateHz) > 0 ? n(s.telemetryRateHz) : 1;
             setPositions(normalizePositions(p, hz));

@@ -7,10 +7,9 @@ namespace SailSight.Api.Middleware;
 /// Double-submit cookie CSRF protection. On any state-changing request from a
 /// cookie-authenticated session, the request must include the CSRF token in
 /// the <see cref="AuthConstants.CsrfHeaderName"/> header that matches the
-/// <see cref="AuthConstants.CsrfCookieName"/> cookie. PAT-authenticated
-/// requests are exempt (no ambient browser credentials).
+/// <see cref="AuthConstants.CsrfCookieName"/> cookie.
 /// </summary>
-public sealed class CsrfMiddleware(RequestDelegate next, AuthOptions auth)
+public sealed class CsrfMiddleware(RequestDelegate next)
 {
     private static readonly HashSet<string> SafeMethods = new(StringComparer.OrdinalIgnoreCase) { "GET", "HEAD", "OPTIONS" };
 
@@ -29,19 +28,12 @@ public sealed class CsrfMiddleware(RequestDelegate next, AuthOptions auth)
             });
         }
 
-        if (auth.IsSingleUser || SafeMethods.Contains(ctx.Request.Method))
+        if (SafeMethods.Contains(ctx.Request.Method))
         {
             await next(ctx); return;
         }
 
-        // Auth scheme: PAT-authenticated requests don't need CSRF.
-        var authScheme = ctx.User?.Identity?.AuthenticationType;
-        if (string.Equals(authScheme, AuthConstants.PatScheme, StringComparison.Ordinal))
-        {
-            await next(ctx); return;
-        }
-
-        // Only enforce CSRF for cookie-authenticated requests.
+        // Require an explicit browser header for authenticated mutations.
         if (ctx.User?.Identity?.IsAuthenticated == true)
         {
             var cookie = ctx.Request.Cookies[AuthConstants.CsrfCookieName];

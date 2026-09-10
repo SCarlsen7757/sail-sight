@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -29,7 +31,7 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   async function loadSessions() {
-    const res = await fetch(`/api/v1/teams/${id}/sessions`);
+    const res = await browserRequest(`/api/v1/teams/${id}/sessions`);
     if (res.ok) setSessions(await res.json());
     else setSessions([]);
   }

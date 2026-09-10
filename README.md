@@ -4,17 +4,11 @@ A self-hosted sailing telemetry analysis tool for [Vakaros](https://vakaros.com/
 
 > **User management is admin-managed.** There is no public sign-up, password reset, email verification, or social login. The first admin is bootstrapped from environment variables; the admin then creates users and shares a one-time setup URL with each new user out-of-band (Slack/SMS/in-person).
 >
-> **Quickstart for self-hosters:**
+> **Local quickstart:** Create an ignored `.env` with independent `POSTGRES_PASSWORD` and `RUNTIME_DB_PASSWORD`, plus `AUTH_ADMIN_EMAIL`. Optionally set `AUTH_ADMIN_PASSWORD`; otherwise obtain the first setup URL from `docker compose logs migrate`.
 >
-> 1. Edit `docker-compose.yml` and set `Auth__Admin__Email` and `Auth__Admin__Password` (min 12 chars) on the `api` service.
-> 2. `docker compose up -d` — starts Postgres, the API, and the web app.
-> 3. Open `http://localhost:8081` and sign in as the bootstrap admin.
-> 4. Go to **Admin → Users** to create new users. Two flows are available:
->    - **Per-user setup link** — for known emails. Copy the one-time URL and share it; the user sets their own password from it.
->    - **Shareable invitation link** — for bulk onboarding. Set an optional expiry (days) and/or max-use count. Share the single URL; each redeemer creates their own account (email + display name + password) and is assigned the role you picked when creating the link. Revoke at any time.
-> 5. To skip auth entirely (single-user mode), set `Auth__Mode=SingleUser` in `docker-compose.yml`. The admin bootstrap is skipped in this mode.
+> Run `docker compose -f docker-compose.yml up -d --build` and open `http://localhost:8081`. This is the explicit localhost development profile. Shared browser access requires HTTPS and configured proxy trust.
 >
-> If you leave `Auth__Admin__Password` empty, the bootstrap admin is created without a password and a one-time setup URL is logged to the API container logs (`docker compose logs api`) — useful for ephemeral deployments.
+> See the [security implementation and deployment guide](docs/security/implementation.md) for account rules, SingleUser restrictions, upload limits, key protection, migrations and verification.
 
 ---
 
@@ -63,7 +57,6 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 | ⛵ **Boats** | Register boats with name, sail number, and class; link them to sessions |
 | 📍 **Marks & Courses** | Define race-course marks and build ordered course legs; overlay them on any race map |
 | 🐳 **Self-hosted** | One `docker compose up` starts the database, API, and Web UI |
-| 🤖 **AI Race Summaries** | Optional AI-generated post-race analysis streamed via SSE; requires an OpenAI-compatible `RaceSummary:ApiKey` in config |
 
 ---
 
@@ -72,7 +65,7 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 ```
 ┌──────────────────────────┐      HTTP/JSON      ┌────────────────────────────┐
 │  SailSight.Web           │ ──────────────────► │  SailSight.Api             │
-│  Next.js 15 / React 19   │                     │  ASP.NET Core (.NET 10)    │
+│  Next.js 16 / React 19   │                     │  ASP.NET Core (.NET 10)    │
 └──────────────────────────┘                     └─────────────┬──────────────┘
                                                                │ EF Core
                                                                ▼
@@ -107,13 +100,13 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 
 ### API Versioning and TypeScript Codegen
 
-The REST API uses URL-segment versioning (`/api/v1/...`). Each version has a dedicated [OpenAPI](https://www.openapis.org/) document that is generated at **build time** and committed to the repository at `SailSight.Api/OpenApi/v1.json`.
+The REST API uses URL-segment versioning (`/api/v1/...`). Each version has a dedicated [OpenAPI](https://www.openapis.org/) document that is generated at **build time** and committed to the repository at `SailSight.Api/OpenApi/SailSight.Api.json`.
 
 The build pipeline auto-generates the frontend TypeScript types from this spec:
 
 ```
 dotnet build
-  └─► GenerateOpenApiDocuments       → SailSight.Api/OpenApi/v1.json
+  └─► GenerateOpenApiDocuments       → SailSight.Api/OpenApi/SailSight.Api.json
   └─► GenerateTypeScriptTypes        → SailSight.Web/src/lib/api-types.ts
         (runs: npm run gen:api)
 ```
@@ -127,63 +120,19 @@ The generated `api-types.ts` is consumed by [openapi-fetch](https://openapi-ts.d
 
 ### Running with Docker Compose
 
+Set the required credentials described above, then run:
+
 ```bash
-docker compose up --build
+docker compose -f docker-compose.yml up -d --build
 ```
 
-This starts:
-
-- **TimescaleDB** on port `5432`
-- **API** on port `8080`
-- **Web UI** on port `8081`
-
-This builds from source and is aimed at development. To run released images instead, see below.
+The web UI binds to `127.0.0.1:8081`, the API to `127.0.0.1:8080`, and the database stays on the internal network. Add the development override when using the hot-reload workflow.
 
 ### Self-hosting with pre-built images
 
-`docker-compose.ghcr.yml` pulls published images from GitHub Container Registry, so it needs no
-source checkout — just the one file:
+Use `docker-compose.ghcr.yml` together with this checkout's `deployment/` directory. Set digest-qualified `SAILSIGHT_API_IMAGE` and `SAILSIGHT_WEB_IMAGE`, separate migration/runtime database passwords, an initial administrator email, an HTTPS application origin, and the authentication-key certificate settings. The [deployment guide](docs/security/implementation.md#sharedprivate-network-setup) explains proxy trust, storage ownership and configuration.
 
-```bash
-curl -O https://raw.githubusercontent.com/SCarlsen7757/sail-sight/main/docker-compose.ghcr.yml
-printf 'POSTGRES_PASSWORD=%s\n' "$(openssl rand -base64 24)" > .env
-
-# The database is bind-mounted to ./data/db on the host. Create it and hand it
-# to the uid Postgres runs as inside the image, or the container won't start.
-mkdir -p ./data/db
-sudo chown -R "$(docker run --rm timescale/timescaledb-ha:pg16 id -u)" ./data/db
-
-docker compose -f docker-compose.ghcr.yml up -d
-```
-
-Database files live in `./data/db` rather than a Docker-managed volume, so they sit in a path you
-control. Override it with `DATA_DIR` in `.env`. Two constraints come with bind mounts: the folder
-must be **empty** on first start (Postgres refuses to initialise into a non-empty directory), and it
-must be **writable by the container's Postgres uid** — a named volume inherits that ownership
-automatically, a bind mount does not, and Docker creates a missing folder owned by `root`. Hence the
-`chown` above.
-
-Copying the folder is not a safe backup while the stack is running — use
-`docker compose -f docker-compose.ghcr.yml exec db pg_dump -U sailsight sailsight > dump.sql`, or
-stop the stack first.
-
-`POSTGRES_PASSWORD` is the only required value; Compose refuses to start without it rather than
-falling back to a shipped default. Leave `AUTH_ADMIN_PASSWORD` unset and the API logs a one-time
-setup URL for the bootstrap admin instead:
-
-```bash
-docker compose -f docker-compose.ghcr.yml logs api | grep -i setup
-```
-
-Pin a version with `SAILSIGHT_TAG` in `.env` — `latest` (newest release), `1.2` (newest patch on
-that minor line), `1.2.3` (exact), or `main` (bleeding edge, built on every merge). Upgrade with
-`docker compose -f docker-compose.ghcr.yml pull` followed by `up -d`. The file's header comments
-document every supported variable.
-
-| Image | Tags |
-| --- | --- |
-| `ghcr.io/scarlsen7757/sail-sight-api` | `latest` `1.2.3` `1.2` `1` `main` `sha-<short>` |
-| `ghcr.io/scarlsen7757/sail-sight-web` | `latest` `1.2.3` `1.2` `1` `main` `sha-<short>` |
+The database bind mount defaults to `./data/db` and covers `/home/postgres/pgdata`. Prepare an empty directory owned by the pinned image's `postgres` user for a fresh installation. Use PostgreSQL backup tools rather than copying a running database directory. Cloudflare Tunnel deployment is tracked separately in [issue #6](https://github.com/SCarlsen7757/sail-sight/issues/6).
 
 ### Development (Visual Studio 2022)
 
@@ -275,7 +224,7 @@ Boats, marks, and courses can be managed via the REST API:
 | --- | --- | --- |
 | `Vakaros.Vkx.Parser` | Class library | Decodes the VKX binary format (v1.4) into typed C# records |
 | `SailSight.Api` | ASP.NET Core Web API | Ingestion, storage, race detection, REST endpoints |
-| `SailSight.Web` | Next.js 15 / React 19 / TypeScript | Interactive web UI — map, charts, gauges, playback |
+| `SailSight.Web` | Next.js 16 / React 19 / TypeScript | Interactive web UI — map, charts, gauges, playback |
 | `SailSight.Shared` | Class library | DTOs shared between the API and web projects |
 
 ---

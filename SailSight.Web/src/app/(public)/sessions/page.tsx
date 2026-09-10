@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -67,10 +69,10 @@ export default function PublicSessionsPage() {
   }, [authenticated, visibility]);
 
   const doDelete = async (s: SessionSummary) => {
-    const res = await fetch(`/api/v1/sessions/${s.id}`, { method: "DELETE" });
+    const res = await browserRequest(`/api/v1/sessions/${s.id}`, { method: "DELETE" });
     setConfirmDelete(null);
     if (res.ok || res.status === 204) {
-      toast.push({ kind: "success", message: `Deleted ${s.displayName ?? s.fileName}` });
+      toast.push({ kind: "success", message: `Deleted ${s.displayName ?? `Session ${new Date(s.startedAt).toLocaleDateString()}`}` });
       refresh();
     } else {
       toast.push({ kind: "error", message: "Failed to delete session" });
@@ -136,7 +138,7 @@ export default function PublicSessionsPage() {
               {items.map((s) => {
                 const dur = (new Date(s.endedAt).getTime() - new Date(s.startedAt).getTime()) / 1000;
                 const href = s.isOwned ? `/sessions/${s.id}` : `/s/${s.id}`;
-                const title = s.displayName ?? s.fileName;
+                const title = s.displayName ?? `Session ${new Date(s.startedAt).toLocaleDateString()}`;
                 return (
                   <tr key={String(s.id)} className="group relative cursor-pointer border-t border-border-default text-sm hover:bg-bg-elevated/40">
                     <td className="px-3 py-2">

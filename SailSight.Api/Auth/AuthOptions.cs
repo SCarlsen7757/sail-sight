@@ -22,7 +22,7 @@ public sealed class AuthOptions
 
     /// <summary>
     /// Bootstrap config for the first admin. If both Email and Password are provided
-    /// and no Admin role member exists, an admin user is seeded on startup.
+    /// on an empty installation, an admin user is seeded by the migration job.
     /// If only Email is set, the admin is seeded with no password and a setup URL is logged.
     /// </summary>
     public sealed class AdminBootstrapOpts

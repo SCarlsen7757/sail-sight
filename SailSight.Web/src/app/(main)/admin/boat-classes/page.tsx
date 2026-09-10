@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import { useEffect, useState } from "react";
 import { Button, Card } from "@/components/ui/controls";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
@@ -11,7 +13,7 @@ export default function AdminBoatClassesPage() {
   const [requests, setRequests] = useState<BoatClassRequest[] | null>(null);
 
   const load = () => {
-    fetch("/api/v1/admin/boat-class-requests").then(async (res) => {
+    browserRequest("/api/v1/admin/boat-class-requests").then(async (res) => {
       if (res.ok) setRequests(await res.json());
       else setRequests([]);
     });
@@ -20,7 +22,7 @@ export default function AdminBoatClassesPage() {
   useEffect(load, []);
 
   const approve = async (id: string) => {
-    const res = await fetch(`/api/v1/admin/boat-class-requests/${id}/approve`, { method: "POST" });
+    const res = await browserRequest(`/api/v1/admin/boat-class-requests/${id}/approve`, { method: "POST" });
     if (res.ok) {
       toast.push({ kind: "success", message: "Request approved — boat class created." });
       load();
@@ -28,7 +30,7 @@ export default function AdminBoatClassesPage() {
   };
 
   const reject = async (id: string) => {
-    const res = await fetch(`/api/v1/admin/boat-class-requests/${id}/reject`, { method: "POST" });
+    const res = await browserRequest(`/api/v1/admin/boat-class-requests/${id}/reject`, { method: "POST" });
     if (res.ok) {
       toast.push({ kind: "success", message: "Request rejected." });
       load();

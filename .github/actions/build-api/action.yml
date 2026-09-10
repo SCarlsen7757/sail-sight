@@ -5,9 +5,9 @@ runs:
   using: composite
   steps:
     - name: Setup .NET
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
       with:
-        dotnet-version: "10.x"
+        dotnet-version: "10.0.401"
 
     - name: Restore dependencies
       shell: bash
@@ -20,3 +20,7 @@ runs:
         --no-restore
         -c Release
         /p:SkipTypeScriptGeneration=true
+
+    - name: Security regression tests
+      shell: bash
+      run: dotnet test SailSight.Api.Tests/SailSight.Api.Tests.csproj -c Release -p:SkipTypeScriptGeneration=true

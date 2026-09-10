@@ -15,7 +15,7 @@ namespace SailSight.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v{version:apiVersion}/[controller]")]
-public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLegAnalysisService legAnalysis) : ControllerBase
+public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLegAnalysisService legAnalysis, SessionAuthorizer sessionAuth) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<CourseSummaryDto>>> GetAll([FromQuery] int? year, CancellationToken ct)
@@ -26,9 +26,9 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLe
             query = query.Where(c => c.Year == year.Value);
 
         var courses = await query
-            .OrderBy(c => c.Year).ThenBy(c => c.Name)
+            .OrderBy(c => c.Year).ThenBy(c => c.Name).ThenBy(c => c.Id)
             .Select(c => new CourseSummaryDto(c.Id, c.Name, c.Year, c.Description, c.CreatedAt, c.Legs.Count))
-            .ToListAsync(ct);
+            .PageAsync(HttpContext, ct);
         return Ok(courses);
     }
 
@@ -38,9 +38,12 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLe
     {
         var isAuthenticated = currentUser.IsAuthenticated;
         var userId = currentUser.UserId;
+        var privateIds = sessionAuth.PrivateSessionIds();
         var course = await db.Courses
             .Where(c => c.Id == id && (
                 (isAuthenticated && c.OwnerUserId == userId) ||
+                db.Sessions.Any(s => s.CourseId == c.Id && privateIds.Contains(s.Id)) ||
+                db.Races.Any(r => r.CourseId == c.Id && privateIds.Contains(r.SessionId)) ||
                 db.Races.Any(r => r.CourseId == c.Id && db.Sessions.Any(s => s.Id == r.SessionId && s.IsPublic))
             ))
             .Include(c => c.Legs.OrderBy(l => l.SortOrder))

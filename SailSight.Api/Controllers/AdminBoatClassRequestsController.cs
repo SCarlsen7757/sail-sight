@@ -1,3 +1,4 @@
+using SailSight.Api.Helpers;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -22,12 +23,12 @@ public class AdminBoatClassRequestsController(AppDbContext db, ICurrentUser curr
     {
         var requests = await db.BoatClassRequests
             .Where(r => r.Status == BoatClassRequestStatus.Pending)
-            .OrderBy(r => r.CreatedAt)
+            .OrderBy(r => r.CreatedAt).ThenBy(r => r.Id)
             .Select(r => new BoatClassRequestDto(
                 r.Id, r.RequestedByUserId, r.RequestedByUser.Email!,
                 r.Name, r.Length, r.Width, r.Weight, r.Notes,
                 r.Status.ToString(), r.CreatedAt, r.ReviewedAt))
-            .ToListAsync(ct);
+            .PageAsync(HttpContext, ct);
         return Ok(requests);
     }
 

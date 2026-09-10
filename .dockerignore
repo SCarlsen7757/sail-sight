@@ -1,6 +1,14 @@
 **/.classpath
 **/.dockerignore
 **/.env
+**/*.env
+**/.next
+**/*.pfx
+.security-*
+data
+*-runtime*.txt
+*-build.txt
+*-results.txt
 **/.git
 **/.gitignore
 **/.project

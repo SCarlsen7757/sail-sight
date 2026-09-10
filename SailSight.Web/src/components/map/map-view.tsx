@@ -60,7 +60,7 @@ function AutoInvalidateSize() {
 function FitBounds({ points, fitTick }: { points: L.LatLngExpression[]; fitTick: number }) {
   const map = useMap();
   const pointsRef = useRef(points);
-  pointsRef.current = points;
+  useEffect(() => { pointsRef.current = points; }, [points]);
   useEffect(() => {
     if (pointsRef.current.length === 0) return;
     const b = L.latLngBounds(pointsRef.current);

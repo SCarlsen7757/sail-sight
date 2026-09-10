@@ -434,35 +434,6 @@
         }
       }
     },
-    "/api/v1/auth/providers": {
-      "get": {
-        "tags": [
-          "Auth"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthProvidersDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthProvidersDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthProvidersDto"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/auth/login": {
       "post": {
         "tags": [
@@ -682,6 +653,35 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AuthResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/providers": {
+      "get": {
+        "tags": [
+          "AuthProviders"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProvidersDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProvidersDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthProvidersDto"
                 }
               }
             }
@@ -1782,114 +1782,6 @@
         }
       }
     },
-    "/api/v1/me/tokens": {
-      "get": {
-        "tags": [
-          "Me"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PersonalAccessTokenDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PersonalAccessTokenDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PersonalAccessTokenDto"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Me"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreatePatRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreatePatRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreatePatRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreatePatResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreatePatResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreatePatResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/me/tokens/{id}": {
-      "delete": {
-        "tags": [
-          "Me"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
-    },
     "/api/v1/me/invites": {
       "get": {
         "tags": [
@@ -2639,88 +2531,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/api/v1/races/{raceId}/summary": {
-      "get": {
-        "tags": [
-          "RaceSummary"
-        ],
-        "parameters": [
-          {
-            "name": "raceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/RaceSummaryDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RaceSummaryDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RaceSummaryDto"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "RaceSummary"
-        ],
-        "parameters": [
-          {
-            "name": "raceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "RaceSummary"
-        ],
-        "parameters": [
-          {
-            "name": "raceId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
           }
         }
       }
@@ -4729,42 +4539,6 @@
           }
         }
       },
-      "CreatePatRequest": {
-        "required": [
-          "name",
-          "expiresInDays"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "expiresInDays": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          }
-        }
-      },
-      "CreatePatResponse": {
-        "required": [
-          "token",
-          "plaintextToken"
-        ],
-        "type": "object",
-        "properties": {
-          "token": {
-            "$ref": "#/components/schemas/PersonalAccessTokenDto"
-          },
-          "plaintextToken": {
-            "type": "string"
-          }
-        }
-      },
       "CreateShareRequest": {
         "required": [
           "teamId"
@@ -5372,55 +5146,6 @@
           },
           "expiresAt": {
             "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "PersonalAccessTokenDto": {
-        "required": [
-          "id",
-          "name",
-          "tokenPrefix",
-          "createdAt",
-          "expiresAt",
-          "lastUsedAt",
-          "revokedAt"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "name": {
-            "type": "string"
-          },
-          "tokenPrefix": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "expiresAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "lastUsedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "revokedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "date-time"
           }
         }
@@ -6095,30 +5820,6 @@
               "string"
             ],
             "format": "float"
-          }
-        }
-      },
-      "RaceSummaryDto": {
-        "required": [
-          "content",
-          "model",
-          "generatedAt",
-          "isStale"
-        ],
-        "type": "object",
-        "properties": {
-          "content": {
-            "type": "string"
-          },
-          "model": {
-            "type": "string"
-          },
-          "generatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "isStale": {
-            "type": "boolean"
           }
         }
       },
@@ -7179,6 +6880,9 @@
       "name": "Auth"
     },
     {
+      "name": "AuthProviders"
+    },
+    {
       "name": "BoatClasses"
     },
     {
@@ -7201,9 +6905,6 @@
     },
     {
       "name": "Races"
-    },
-    {
-      "name": "RaceSummary"
     },
     {
       "name": "Sessions"

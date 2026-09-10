@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -66,13 +68,13 @@ export default function BoatsPage() {
     const body = { name: draft.name, sailNumber: draft.sailNumber || null, boatClassId: draft.boatClassId, description: draft.description || null, isPublic: draft.isPublic };
     const isNew = panelId === "new";
     const url = isNew ? "/api/v1/boats" : `/api/v1/boats/${panelId}`;
-    const res = await fetch(url, { method: isNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const res = await browserRequest(url, { method: isNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) { toast.push({ kind: "success", message: isNew ? "Boat created." : "Boat updated." }); setPanelId(null); load(); }
     else toast.push({ kind: "error", message: "Save failed." });
   };
 
   const doDelete = async (b: Boat) => {
-    const res = await fetch(`/api/v1/boats/${b.id}`, { method: "DELETE" });
+    const res = await browserRequest(`/api/v1/boats/${b.id}`, { method: "DELETE" });
     setConfirmDelete(null);
     if (res.ok || res.status === 204) { toast.push({ kind: "success", message: "Boat deleted." }); load(); }
     else if (res.status === 409) toast.push({ kind: "error", message: "Cannot delete: boat is referenced by sessions." });

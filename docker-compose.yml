@@ -1,18 +1,48 @@
+# Explicit localhost development profile.
+# See docs/security/implementation.md for setup and migration instructions.
 services:
   db:
-    image: timescale/timescaledb-ha:pg16
+    image: sailsightdb
+    build:
+      context: ./deployment
+      dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-sailsight}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sailsight}
-      POSTGRES_DB: ${POSTGRES_DB:-sailsight}
+      POSTGRES_USER: sailsight
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set migration database password}
+      POSTGRES_DB: sailsight
+      RUNTIME_DB_PASSWORD: ${RUNTIME_DB_PASSWORD:?set separate runtime database password}
     volumes:
-      - database:/var/lib/postgresql/data
+      - database:/home/postgres/pgdata
+      - ./deployment/init-runtime-role.sh:/docker-entrypoint-initdb.d/20-runtime-role.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sailsight}"]
+      test: [CMD-SHELL, pg_isready -U sailsight]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+
+  migrate:
+    image: ${DOCKER_REGISTRY-}sailsightapi
+    build:
+      context: .
+      dockerfile: SailSight.Api/Dockerfile
+    command: [--migrate-only]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: &api-environment
+      ASPNETCORE_ENVIRONMENT: Development
+      LocalProfile: "true"
+      Database__AutoMigrate: "false"
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: Host=db;Database=sailsight;Username=sailsight_runtime;Password=${RUNTIME_DB_PASSWORD}
+      ConnectionStrings__Migration: Host=db;Database=sailsight;Username=sailsight;Password=${POSTGRES_PASSWORD}
+      Auth__Mode: MultiUser
+      Auth__Admin__Email: ${AUTH_ADMIN_EMAIL:?set initial administrator email}
+      Auth__Admin__Password: ${AUTH_ADMIN_PASSWORD:-}
+      Web__PublicBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:8081}
+      TrustedProxies__0: 172.30.89.3
 
   api:
     image: ${DOCKER_REGISTRY-}sailsightapi
@@ -21,22 +51,14 @@ services:
       dockerfile: SailSight.Api/Dockerfile
     restart: unless-stopped
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__Default: >-
-        Host=db;Port=5432;Database=${POSTGRES_DB:-sailsight};Username=${POSTGRES_USER:-sailsight};Password=${POSTGRES_PASSWORD:-sailsight}
-      Auth__Mode: MultiUser
-      # Bootstrap admin on first start. Change these before deploying!
-      # If Password is empty, a one-time setup URL is logged on startup.
-      Auth__Admin__Email: ${AUTH_ADMIN_EMAIL:-admin@test.local}
-      Auth__Admin__Password: ${AUTH_ADMIN_PASSWORD:-password1234!}
-      Cors__AllowedOrigins__0: http://localhost:8081
-      Web__PublicBaseUrl: http://localhost:8081
+      <<: *api-environment
+      ConnectionStrings__Migration: ""
+      Auth__Admin__Password: ""
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
 
   web:
     image: ${DOCKER_REGISTRY-}sailsightweb
@@ -44,12 +66,24 @@ services:
       context: SailSight.Web
       dockerfile: Dockerfile
     restart: unless-stopped
-    depends_on:
-      - api
+    depends_on: [api]
+    networks:
+      default:
+        ipv4_address: 172.30.89.3
     environment:
       API_BASE_URL: http://api:8080
+      APP_ORIGIN: ${PUBLIC_BASE_URL:-http://localhost:8081}
+      TRUSTED_INGRESS_PROXIES: ${TRUSTED_INGRESS_PROXIES:-}
+      HOSTNAME: 0.0.0.0
     ports:
-      - "8081:3000"
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8081}:3000"
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.89.0/24
+          ip_range: 172.30.89.128/25
 
 volumes:
   database:

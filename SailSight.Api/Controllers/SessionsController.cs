@@ -1,3 +1,7 @@
+using SailSight.Api.Helpers;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Cryptography;
+using Npgsql;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +31,10 @@ public class SessionsController(
 {
     [HttpPost]
     [Authorize]
-    [RequestSizeLimit(200_000_000)]
+    [EnableRateLimiting("upload")]
+    [ServiceFilter(typeof(UploadAdmissionFilter))]
+    [RequestSizeLimit(IngestionLimits.RequestBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = IngestionLimits.RequestBytes, ValueCountLimit = 1, ValueLengthLimit = 1024, MemoryBufferThreshold = 65536)]
     public async Task<ActionResult<SessionDetailDto>> Upload(IFormFile file, CancellationToken ct)
     {
         if (file is null || file.Length == 0)
@@ -35,15 +42,21 @@ public class SessionsController(
 
         var ownerId = currentUser.UserId;
 
-        using var ms = new MemoryStream();
-        await file.CopyToAsync(ms, ct);
-        var fileBytes = ms.ToArray();
-        var contentHash = VkxIngestionService.ComputeHash(fileBytes);
-
+        if (file.Length > IngestionLimits.FileBytes) return StatusCode(413);
+        if (Request.Form.Files.Count != 1 || Request.Form.Count != 0) return BadRequest(new { error = "one_file_required" });
+        // ASP.NET form buffering spools to disk above 64 KiB and deletes its file
+        // when the request is disposed. Reuse that seekable stream without copying it.
+        await using var stream = file.OpenReadStream();
+        var contentHash = Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, ct));
+        stream.Position = 0;
         if (await ingestionService.IsDuplicateAsync(ownerId, contentHash, ct))
             return Conflict(new { message = "A session with the same file content has already been uploaded." });
-
-        var session = await ingestionService.IngestAsync(ownerId, fileBytes, file.FileName, contentHash, ct);
+        Models.Entities.Session session;
+        try { session = await ingestionService.IngestAsync(ownerId, stream, Path.GetFileName(file.FileName), contentHash, ct); }
+        catch (Exception ex) when (ex is FormatException or EndOfStreamException or ArgumentOutOfRangeException)
+        { return BadRequest(new { error = "invalid_vkx" }); }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        { return Conflict(new { error = "duplicate" }); }
 
         var dto = new SessionDetailDto(
             session.Id, session.BoatId, null, session.CourseId, null,
@@ -75,11 +88,13 @@ public class SessionsController(
         [FromQuery] int pageSize = 25,
         CancellationToken ct = default)
     {
+        if (page > 5_000_000) return BadRequest(new { error = "invalid_page" });
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 25;
         if (pageSize > 100) pageSize = 100;
 
         var visibleIds = sessionAuth.ReadableSessionIds();
+        var privateIds = sessionAuth.PrivateSessionIds();
         var userId = currentUser.IsAuthenticated ? currentUser.UserId : (Guid?)null;
 
         var userTeamIds = userId.HasValue
@@ -104,7 +119,7 @@ public class SessionsController(
             var s = search.Trim();
             var pattern = $"%{s}%";
             query = query.Where(x =>
-                EF.Functions.ILike(x.FileName, pattern) ||
+                (privateIds.Contains(x.Id) && EF.Functions.ILike(x.FileName, pattern)) ||
                 (x.DisplayName != null && EF.Functions.ILike(x.DisplayName, pattern)));
         }
 
@@ -131,16 +146,18 @@ public class SessionsController(
 
         var total = await query.CountAsync(ct);
         var sessions = await query
-            .OrderByDescending(s => s.UploadedAt)
+            .OrderByDescending(s => s.UploadedAt).ThenBy(s => s.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
 
+        var pageIds = sessions.Select(s => s.Id).ToArray();
+        var privateSet = (await privateIds.Where(id => pageIds.Contains(id)).ToListAsync(ct)).ToHashSet();
         var items = sessions.Select(s => new SessionSummaryDto(
             s.Id, s.BoatId, s.Boat?.Name,
             s.CourseId, s.Course?.Name,
-            s.FileName, s.DisplayName, s.FormatVersion, s.TelemetryRateHz, s.IsFixedToBodyFrame,
-            s.StartedAt, s.EndedAt, s.UploadedAt, s.Notes, s.Races.Count,
+            privateSet.Contains(s.Id) ? s.FileName : "", SessionAuthorizer.PublicTitle(s), s.FormatVersion, s.TelemetryRateHz, s.IsFixedToBodyFrame,
+            s.StartedAt, s.EndedAt, s.UploadedAt, privateSet.Contains(s.Id) ? s.Notes : null, s.Races.Count,
             IsOwned: userId.HasValue && s.OwnerUserId == userId.Value,
             IsPublic: s.IsPublic,
             SharedViaTeams: s.Shares
@@ -167,7 +184,7 @@ public class SessionsController(
         if (session is null) return NotFound();
 
         var isOwned = currentUser.IsAuthenticated && session.OwnerUserId == currentUser.UserId;
-        return Ok(BuildDetail(session, isOwned));
+        return Ok(BuildDetail(session, isOwned, await sessionAuth.CanReadPrivateAsync(id, ct)));
     }
 
     [HttpGet("{id:guid}/course-layout")]
@@ -229,6 +246,12 @@ public class SessionsController(
             .FirstOrDefaultAsync(s => s.Id == id && s.OwnerUserId == userId, ct);
         if (session is null) return NotFound();
 
+        if (request.BoatId.HasValue && !await sessionAuth.OwnsBoatAsync(request.BoatId.Value, ct)) return BadRequest(new { error = "invalid_boat" });
+        if (request.CourseId.HasValue && !await sessionAuth.OwnsCourseAsync(request.CourseId.Value, ct)) return BadRequest(new { error = "invalid_course" });
+        if (request.IsPublic == true && ((session.BoatId.HasValue && !await sessionAuth.OwnsBoatAsync(session.BoatId.Value, ct)) ||
+            (session.CourseId.HasValue && !await sessionAuth.OwnsCourseAsync(session.CourseId.Value, ct)) ||
+            await db.Races.AnyAsync(r => r.SessionId == id && r.Course != null && r.Course.OwnerUserId != userId, ct)))
+            return BadRequest(new { error = "foreign_resources" });
         if (request.BoatId.HasValue) session.BoatId = request.BoatId.Value;
         if (request.CourseId.HasValue) session.CourseId = request.CourseId.Value;
         if (request.Notes is not null) session.Notes = request.Notes;
@@ -263,8 +286,9 @@ public class SessionsController(
         if (!await db.Sessions.AnyAsync(s => s.Id == sessionId && s.OwnerUserId == userId, ct)) return NotFound();
         var shares = await db.SessionShares
             .Where(sh => sh.SessionId == sessionId)
+            .OrderBy(sh => sh.TeamId)
             .Select(sh => new SessionShareDto(sh.SessionId, sh.TeamId, sh.Team.Name, sh.CreatedAt))
-            .ToListAsync(ct);
+            .PageAsync(HttpContext, ct);
         return Ok(shares);
     }
 
@@ -305,18 +329,18 @@ public class SessionsController(
         return NoContent();
     }
 
-    private static SessionDetailDto BuildDetail(Models.Entities.Session session, bool isOwned) =>
+    private static SessionDetailDto BuildDetail(Models.Entities.Session session, bool isOwned, bool privateAccess = true) =>
         new(
             session.Id, session.BoatId, session.Boat?.Name,
             session.CourseId, session.Course?.Name,
-            session.FileName, session.DisplayName, session.ContentHash, session.FormatVersion,
+            privateAccess ? session.FileName : "", SessionAuthorizer.PublicTitle(session), privateAccess ? session.ContentHash : "", session.FormatVersion,
             session.TelemetryRateHz, session.IsFixedToBodyFrame, session.IsPublic,
-            session.StartedAt, session.EndedAt, session.UploadedAt, session.Notes,
+            session.StartedAt, session.EndedAt, session.UploadedAt, privateAccess ? session.Notes : null,
             isOwned,
             [.. session.Races.Select(r => new RaceDto(
                 r.Id, r.RaceNumber, r.CourseId, r.Course?.Name,
                 r.CountdownStartedAt, r.CountdownDurationSeconds,
                 r.StartedAt, r.EndedAt,
                 r.EndedAt.HasValue ? (r.EndedAt.Value - r.StartedAt).TotalSeconds : null,
-                r.SailedDistanceMeters, r.MaxSpeedOverGround, r.Notes))]);
+                r.SailedDistanceMeters, r.MaxSpeedOverGround, privateAccess ? r.Notes : null))]);
 }

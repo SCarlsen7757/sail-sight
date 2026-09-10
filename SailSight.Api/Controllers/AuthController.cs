@@ -25,11 +25,6 @@ public class AuthController(
     AuthOptions authOptions,
     IOptions<WebOptions> webOptions) : ControllerBase
 {
-    [HttpGet("providers")]
-    [AllowAnonymous]
-    public ActionResult<AuthProvidersDto> GetProviders()
-        => Ok(new AuthProvidersDto(authOptions.Local.Enabled, authOptions.Mode));
-
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting("login")]
@@ -91,6 +86,7 @@ public class AuthController(
     [AllowAnonymous]
     public async Task<IActionResult> CompleteSetup([FromBody] CompleteSetupRequest req)
     {
+        await using var tx = await SecurityTransactions.BeginAsync(db);
         var user = await userManager.FindByIdAsync(req.UserId.ToString());
         if (user is null) return NotFound();
 
@@ -102,9 +98,10 @@ public class AuthController(
         if (!user.EmailConfirmed)
         {
             user.EmailConfirmed = true;
-            await userManager.UpdateAsync(user);
+            SecurityTransactions.Require(await userManager.UpdateAsync(user));
         }
 
+        await tx.CommitAsync();
         await signInManager.SignInAsync(user, isPersistent: true);
         await audit.LogAsync("auth.setup_complete", "user", user.Id.ToString());
 
@@ -116,7 +113,7 @@ public class AuthController(
     // ── Shareable invitation links (multi-use) ─────────────────────────
     [HttpGet("invitation/validate")]
     [AllowAnonymous]
-    [EnableRateLimiting("login")]
+    [EnableRateLimiting("invitation")]
     public async Task<ActionResult<InvitationValidateResponse>> ValidateInvitation([FromQuery] string token, CancellationToken ct)
     {
         var inv = await db.Invitations.FirstOrDefaultAsync(i => i.Token == token, ct);
@@ -131,11 +128,12 @@ public class AuthController(
 
     [HttpPost("invitation/redeem")]
     [AllowAnonymous]
-    [EnableRateLimiting("login")]
+    [EnableRateLimiting("invitation")]
     public async Task<ActionResult<AuthResultDto>> RedeemInvitation([FromBody] RedeemInvitationRequest req, CancellationToken ct)
     {
         if (!authOptions.Local.Enabled) return BadRequest(new { error = "local_auth_disabled" });
 
+        await using var tx = await SecurityTransactions.BeginAsync(db, ct);
         // Atomic decrement-or-fail: increment used_count only if invitation is still valid.
         var now = DateTimeOffset.UtcNow;
         var rows = await db.Invitations
@@ -150,9 +148,6 @@ public class AuthController(
 
         if (await userManager.FindByEmailAsync(req.Email) is not null)
         {
-            // Roll back the count consumption since registration didn't happen.
-            await db.Invitations.Where(i => i.Id == inv.Id)
-                .ExecuteUpdateAsync(s => s.SetProperty(i => i.UsedCount, i => i.UsedCount - 1), ct);
             return Conflict(new { error = "email_taken" });
         }
 
@@ -167,12 +162,11 @@ public class AuthController(
         var create = await userManager.CreateAsync(user, req.Password);
         if (!create.Succeeded)
         {
-            await db.Invitations.Where(i => i.Id == inv.Id)
-                .ExecuteUpdateAsync(s => s.SetProperty(i => i.UsedCount, i => i.UsedCount - 1), ct);
             return BadRequest(new { errors = create.Errors.Select(e => e.Description) });
         }
-        await userManager.AddToRoleAsync(user, inv.Role);
+        SecurityTransactions.Require(await userManager.AddToRoleAsync(user, inv.Role));
 
+        await tx.CommitAsync();
         await signInManager.SignInAsync(user, isPersistent: true);
         await audit.LogAsync("auth.invitation_redeemed", "invitation", inv.Id.ToString(), details: user.Id.ToString(), ct: ct);
         return Ok(new AuthResultDto(user.Id, user.Email!, user.DisplayName));

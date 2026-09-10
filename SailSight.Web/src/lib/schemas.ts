@@ -26,7 +26,6 @@ export type Load = Schemas["LoadDto"];
 export type SpeedThroughWater = Schemas["SpeedThroughWaterDto"];
 export type ShiftAngle = Schemas["ShiftAngleDto"];
 export type StartAnalysis = Schemas["StartAnalysisDto"];
-export type RaceSummary = Schemas["RaceSummaryDto"];
 export type StartLineLength = Schemas["StartLineLengthDto"];
 export type PlatformStats = Schemas["PlatformStatsDto"];
 export type AdminStats = Schemas["AdminStatsDto"];

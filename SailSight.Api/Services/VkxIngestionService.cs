@@ -12,7 +12,7 @@ namespace SailSight.Api.Services;
 /// Orchestrates parsing a VKX file, persisting all records into the database,
 /// and extracting races via <see cref="RaceDetectionService"/>.
 /// </summary>
-public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetection)
+public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetection, IngestionLimits limits)
 {
     /// <summary>
     /// Computes the SHA-256 hash of raw file bytes and returns it as a lowercase hex string.
@@ -34,16 +34,18 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
     /// <summary>
     /// Parses the VKX data and persists all records, returning the created session entity.
     /// </summary>
-    public async Task<Session> IngestAsync(Guid ownerUserId, byte[] fileBytes, string fileName, string contentHash, CancellationToken ct = default)
+    public async Task<Session> IngestAsync(Guid ownerUserId, Stream fileStream, string fileName, string contentHash, CancellationToken ct = default)
     {
-        var vkxSession = VkxParser.Parse(fileBytes);
+        VkxIngestionValidator.Validate(fileStream, limits, ct);
+        var vkxSession = VkxParser.Parse(new CancellableReadStream(fileStream, ct));
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
 
         // Extract session-level metadata.
         var deviceConfig = vkxSession.DeviceConfigurationRecords.FirstOrDefault();
         var firstPosition = vkxSession.PositionRecords.FirstOrDefault();
         var lastPosition = vkxSession.PositionRecords.LastOrDefault();
 
-        //TODO : Consider more robust approaches for determining session start/end times and telemetry rate. Or make null checks and throw if assumptions are violated.
+        // The ingestion validator requires ordered positions and device configuration.
 
         var session = new Session
         {
@@ -62,6 +64,10 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
 
         // Detect and insert races.
         var races = raceDetection.DetectRaces(vkxSession, session.Id);
+        if (races.Any(r => r.StartedAt < session.StartedAt || r.StartedAt > session.EndedAt ||
+            (r.EndedAt.HasValue && (r.EndedAt < r.StartedAt || r.EndedAt > session.EndedAt))))
+            throw new FormatException("Race timestamps must be within the session.");
+        if (races.Count > limits.Races) throw new BadHttpRequestException("Race budget exceeded.", 413);
         if (races.Count > 0)
         {
             EnrichRaceMetrics(races, vkxSession.PositionRecords);
@@ -73,6 +79,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
         // Insert time-series data.
         await InsertTimeSeriesDataAsync(vkxSession, session.Id, ct);
 
+        await tx.CommitAsync(ct);
         return session;
     }
 
@@ -82,28 +89,32 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
     /// </summary>
     private static void EnrichRaceMetrics(List<Race> races, IEnumerable<PositionRecord> allPositions)
     {
-        // Materialise once — PositionRecords is a lazy LINQ projection over the record list.
-        foreach (var race in races)
+        var positions = allPositions.OrderBy(p => p.Timestamp).ToArray();
+        var cursor = 0;
+        foreach (var race in races.OrderBy(r => r.StartedAt))
         {
             if (race.EndedAt is null) continue;
-
-            var racePositions = allPositions
-                .Where(p => p.Timestamp >= race.StartedAt && p.Timestamp <= race.EndedAt)
-                .ToList();
-
-            if (racePositions.Count == 0)
-                continue;
-
-            var sailedMeters = 0.0;
-            for (var i = 1; i < racePositions.Count; i++)
+            while (cursor < positions.Length && positions[cursor].Timestamp < race.StartedAt) cursor++;
+            PositionRecord? previous = null;
+            for (var i = cursor; i < positions.Length && positions[i].Timestamp <= race.EndedAt; i++)
             {
-                sailedMeters += GeoHelper.HaversineMeters(
-                    racePositions[i - 1].Latitude, racePositions[i - 1].Longitude,
-                    racePositions[i].Latitude, racePositions[i].Longitude);
+                var p = positions[i];
+                if (previous != null) race.SailedDistanceMeters += GeoHelper.HaversineMeters(previous.Latitude, previous.Longitude, p.Latitude, p.Longitude);
+                race.MaxSpeedOverGround = Math.Max(race.MaxSpeedOverGround, p.SpeedOverGround);
+                previous = p;
+                cursor = i;
             }
+        }
+    }
 
-            race.SailedDistanceMeters = sailedMeters;
-            race.MaxSpeedOverGround = racePositions.Max(p => p.SpeedOverGround);
+    private async Task InsertBatchesAsync<T>(IEnumerable<T> records, CancellationToken ct) where T : class
+    {
+        foreach (var batch in records.Chunk(2_000))
+        {
+            ct.ThrowIfCancellationRequested();
+            db.Set<T>().AddRange(batch);
+            await db.SaveChangesAsync(ct);
+            foreach (var row in batch) db.Entry(row).State = EntityState.Detached;
         }
     }
 
@@ -124,7 +135,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             QuaternionY = p.QuaternionY,
             QuaternionZ = p.QuaternionZ,
         });
-        db.Positions.AddRange(positions);
+        await InsertBatchesAsync(positions, ct);
 
         // Wind readings
         var windReadings = vkxSession.WindRecords.Select(w => new WindReading
@@ -134,7 +145,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             WindDirection = w.WindDirection,
             WindSpeed = w.WindSpeed,
         });
-        db.WindReadings.AddRange(windReadings);
+        await InsertBatchesAsync(windReadings, ct);
 
         // Speed through water
         var speedReadings = vkxSession.SpeedThroughWaterRecords.Select(s => new SpeedThroughWaterReading
@@ -144,7 +155,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             ForwardSpeed = s.ForwardSpeed,
             HorizontalSpeed = s.HorizontalSpeed,
         });
-        db.SpeedThroughWater.AddRange(speedReadings);
+        await InsertBatchesAsync(speedReadings, ct);
 
         // Depth
         var depthReadings = vkxSession.DepthRecords.Select(d => new DepthReading
@@ -153,7 +164,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             SessionId = sessionId,
             Depth = d.Depth,
         });
-        db.DepthReadings.AddRange(depthReadings);
+        await InsertBatchesAsync(depthReadings, ct);
 
         // Temperature
         var tempReadings = vkxSession.TemperatureRecords.Select(t => new TemperatureReading
@@ -162,7 +173,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             SessionId = sessionId,
             Temperature = t.Temperature,
         });
-        db.TemperatureReadings.AddRange(tempReadings);
+        await InsertBatchesAsync(tempReadings, ct);
 
         // Load
         var loadReadings = vkxSession.LoadRecords.Select(l => new LoadReading
@@ -172,7 +183,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             SensorName = l.SensorName,
             Load = l.Load,
         });
-        db.LoadReadings.AddRange(loadReadings);
+        await InsertBatchesAsync(loadReadings, ct);
 
         // Declinations
         var declinations = vkxSession.DeclinationRecords.Select(d => new DeclinationReading
@@ -183,7 +194,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             Latitude = d.Latitude,
             Longitude = d.Longitude,
         });
-        db.Declinations.AddRange(declinations);
+        await InsertBatchesAsync(declinations, ct);
 
         // Race timer events
         var timerEvents = vkxSession.RaceTimerEventRecords.Select(e => new RaceTimerEvent
@@ -193,7 +204,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             EventType = (short)e.EventType,
             TimerValue = e.TimerValue,
         });
-        db.RaceTimerEvents.AddRange(timerEvents);
+        await InsertBatchesAsync(timerEvents, ct);
 
         // Line positions
         var linePositions = vkxSession.LinePositionRecords.Select(l => new LinePositionReading
@@ -204,7 +215,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             Latitude = l.Latitude,
             Longitude = l.Longitude,
         });
-        db.LinePositions.AddRange(linePositions);
+        await InsertBatchesAsync(linePositions, ct);
 
         // Shift angles
         var shiftAngles = vkxSession.ShiftAngleRecords.Select(s => new ShiftAngleReading
@@ -216,7 +227,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             TrueHeading = s.TrueHeading,
             SpeedOverGround = s.SpeedOverGround,
         });
-        db.ShiftAngles.AddRange(shiftAngles);
+        await InsertBatchesAsync(shiftAngles, ct);
 
         await db.SaveChangesAsync(ct);
     }

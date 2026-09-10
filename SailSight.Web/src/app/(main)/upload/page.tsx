@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Upload as UploadIcon, Loader2 } from "lucide-react";
@@ -7,7 +9,7 @@ import { useToast } from "@/hooks/useToast";
 import { Card } from "@/components/ui/controls";
 import { cn } from "@/lib/cn";
 
-const MAX_BYTES = 100 * 1024 * 1024;
+const MAX_BYTES = 200_000_000;
 
 export default function UploadPage() {
   const router = useRouter();
@@ -18,20 +20,21 @@ export default function UploadPage() {
 
   const handleFiles = useCallback(async (files: FileList | null) => {
     if (!files || !files[0]) return;
+    if (files.length !== 1) { toast.push({ kind: "error", message: "Select one file at a time." }); return; }
     const file = files[0];
     if (!file.name.toLowerCase().endsWith(".vkx")) {
       toast.push({ kind: "error", message: "Only .vkx files are accepted." });
       return;
     }
     if (file.size > MAX_BYTES) {
-      toast.push({ kind: "error", message: "File exceeds 100 MB limit." });
+      toast.push({ kind: "error", message: "File exceeds 200 MB limit." });
       return;
     }
     setUploading(true);
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch("/api/v1/sessions", { method: "POST", body: fd });
+      const res = await browserRequest("/api/v1/sessions", { method: "POST", body: fd });
       if (res.status === 201 || res.ok) {
         const data = await res.json().catch(() => null);
         const id = data?.id ?? data?.Id;
@@ -76,7 +79,7 @@ export default function UploadPage() {
           <p className="mt-4 text-text-primary">
             {uploading ? "Uploading…" : "Drag & drop a .vkx file here, or click to browse"}
           </p>
-          <p className="mt-1 text-xs text-text-secondary">Maximum 100 MB</p>
+          <p className="mt-1 text-xs text-text-secondary">Maximum 200 MB</p>
           <input
             ref={inputRef}
             type="file"

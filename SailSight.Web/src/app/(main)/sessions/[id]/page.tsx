@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -65,7 +67,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const loadShares = () => {
-    fetch(`/api/v1/sessions/${id}/shares`).then(async (res) => {
+    browserRequest(`/api/v1/sessions/${id}/shares`).then(async (res) => {
       if (res.ok) setShares(await res.json());
     });
   };
@@ -92,7 +94,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
     if (!session) return;
     setSaving(true);
     try {
-      const sessionRes = await fetch(`/api/v1/sessions/${id}`, {
+      const sessionRes = await browserRequest(`/api/v1/sessions/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -107,7 +109,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       const racePatches = (session.races as Race[])
         .filter((r) => String(r.courseId ?? "") !== draft.raceCourses[String(r.id)])
         .map((r) =>
-          fetch(`/api/v1/races/${r.id}`, {
+          browserRequest(`/api/v1/races/${r.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ courseId: draft.raceCourses[String(r.id)] || null }),
@@ -125,7 +127,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
   const addShare = async () => {
     if (!shareTeamId) return;
-    const res = await fetch(`/api/v1/sessions/${id}/shares`, {
+    const res = await browserRequest(`/api/v1/sessions/${id}/shares`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ teamId: shareTeamId }),
@@ -142,13 +144,13 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   };
 
   const removeShare = async (teamId: string) => {
-    const res = await fetch(`/api/v1/sessions/${id}/shares/${teamId}`, { method: "DELETE" });
+    const res = await browserRequest(`/api/v1/sessions/${id}/shares/${teamId}`, { method: "DELETE" });
     if (res.ok || res.status === 204) loadShares();
     else toast.push({ kind: "error", message: "Failed to remove share." });
   };
 
   const doDelete = async () => {
-    const res = await fetch(`/api/v1/sessions/${id}`, { method: "DELETE" });
+    const res = await browserRequest(`/api/v1/sessions/${id}`, { method: "DELETE" });
     setConfirm(false);
     if (res.ok || res.status === 204) {
       toast.push({ kind: "success", message: "Session deleted." });
@@ -170,7 +172,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
         <nav className="flex items-center gap-1 text-sm text-text-secondary">
           <Link href="/sessions" className="hover:text-text-primary">Sessions</Link>
           <ChevronRight className="h-4 w-4" />
-          <span className="text-text-primary">{session.displayName ?? session.fileName}</span>
+          <span className="text-text-primary">{session.displayName ?? `Session ${new Date(session.startedAt).toLocaleDateString()}`}</span>
           {session.isPublic && (
             <span className="ml-2 inline-flex items-center gap-1 rounded bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-400">
               <Globe className="h-3 w-3" /> Public

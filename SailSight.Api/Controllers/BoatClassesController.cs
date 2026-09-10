@@ -1,3 +1,4 @@
+using SailSight.Api.Helpers;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,10 +20,10 @@ public class BoatClassesController(AppDbContext db) : ControllerBase
     public async Task<ActionResult<List<BoatClassDto>>> GetAll(CancellationToken ct)
     {
         var classes = await db.BoatClasses
-            .OrderBy(bc => bc.Name)
+            .OrderBy(bc => bc.Name).ThenBy(bc => bc.Id)
             .Select(bc => new BoatClassDto(bc.Id, bc.Name, bc.Length, bc.Width, bc.Weight,
-                db.Boats.Count(b => b.BoatClassId == bc.Id)))
-            .ToListAsync(ct);
+                db.Boats.Count(b => b.BoatClassId == bc.Id && b.IsPublic)))
+            .PageAsync(HttpContext, ct);
         return Ok(classes);
     }
 

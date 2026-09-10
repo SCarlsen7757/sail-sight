@@ -1,3 +1,4 @@
+import { csrfHeaders, browserRequest } from "./browser-request";
 import createClient, { type Middleware } from "openapi-fetch";
 import type { paths } from "./api-types";
 
@@ -8,6 +9,10 @@ const baseUrl = isServer
   : "";
 
 const errorMiddleware: Middleware = {
+  async onRequest({ request }) {
+    csrfHeaders(request.method, request.headers).forEach((value, key) => request.headers.set(key, value));
+    return request;
+  },
   async onResponse({ response }) {
     if (!response.ok && response.status >= 500) {
       // Surface server errors with a friendlier message; consumers handle 4xx.
@@ -17,7 +22,7 @@ const errorMiddleware: Middleware = {
   },
 };
 
-export const api = createClient<paths>({ baseUrl });
+export const api = createClient<paths>({ baseUrl, fetch: browserRequest });
 api.use(errorMiddleware);
 
 export type ApiPaths = paths;

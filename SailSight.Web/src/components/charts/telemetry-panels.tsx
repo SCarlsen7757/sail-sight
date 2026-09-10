@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import { useEffect, useMemo, useState } from "react";
 import { TelemetryChart, ChartSeries } from "./telemetry-chart";
 import type { NormalizedTelemetry } from "@/lib/schemas";
@@ -46,7 +48,7 @@ export function TelemetryPanels({ raceId, raceStartMs, raceStartOffset, telemetr
 
   useEffect(() => {
     const from = raceStartOffset > 0 ? `?from=${-raceStartOffset}` : "";
-    fetch(`/api/v1/races/${raceId}/telemetry${from}`)
+    browserRequest(`/api/v1/races/${raceId}/telemetry${from}`)
       .then((r) => r.ok ? r.json() : null)
       .then((d) => {
         if (!d) return;

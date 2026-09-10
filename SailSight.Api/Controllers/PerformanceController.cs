@@ -1,3 +1,4 @@
+using SailSight.Api.Helpers;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -46,7 +47,7 @@ public class PerformanceController(AppDbContext db, SessionAuthorizer sessionAut
                 p.AverageSpeedOverGround,
                 p.AverageVelocityMadeGood,
                 p.MaxSpeedOverGround))
-            .ToListAsync(ct);
+            .PageAsync(HttpContext, ct);
 
         return Ok(perfs);
     }

@@ -2,8 +2,6 @@ namespace SailSight.Api.Auth;
 
 public static class AuthConstants
 {
-    public const string PatScheme = "PAT";
-    public const string PatPrefix = "vkx_";
 
     /// <summary>
     /// Synthetic user used in single-user mode.

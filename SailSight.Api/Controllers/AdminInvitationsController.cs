@@ -1,3 +1,4 @@
+using SailSight.Api.Helpers;
 using System.Security.Cryptography;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
@@ -25,7 +26,7 @@ public class AdminInvitationsController(
     [HttpGet]
     public async Task<ActionResult<List<InvitationDto>>> List(CancellationToken ct)
     {
-        var items = await db.Invitations.OrderByDescending(i => i.CreatedAt).ToListAsync(ct);
+        var items = await db.Invitations.OrderByDescending(i => i.CreatedAt).ThenBy(i => i.Id).PageAsync(HttpContext, ct);
         return Ok(items.Select(ToDto).ToList());
     }
 

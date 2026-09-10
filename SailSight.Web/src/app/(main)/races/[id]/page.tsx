@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import dynamic from "next/dynamic";
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -55,7 +57,7 @@ export default function RaceViewerPage({ params }: PageProps) {
     let alive = true;
     const raceBase = `/api/v1/races/${raceId}`;
 
-    fetch(raceBase)
+    browserRequest(raceBase)
       .then((r) => r.ok ? r.json() as Promise<RaceDetail> : Promise.reject(r.status))
       .then(async (raceData) => {
         if (!alive) return;
@@ -65,9 +67,9 @@ export default function RaceViewerPage({ params }: PageProps) {
         const fromParam = countdown > 0 ? `?from=${-countdown}` : "";
 
         const fetches: Promise<unknown>[] = [
-          fetch(`${raceBase}/telemetry/positions${fromParam}`).then((r) => r.ok ? r.json() as Promise<any[]> : Promise.reject(r.status)),
+          browserRequest(`${raceBase}/telemetry/positions${fromParam}`).then((r) => r.ok ? r.json() as Promise<any[]> : Promise.reject(r.status)),
           raceData.courseId != null
-            ? fetch(`/api/v1/courses/${raceData.courseId}`).then((r) => r.ok ? r.json() : null)
+            ? browserRequest(`/api/v1/courses/${raceData.courseId}`).then((r) => r.ok ? r.json() : null)
             : Promise.resolve(null),
         ];
 

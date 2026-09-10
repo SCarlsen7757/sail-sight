@@ -1,0 +1,63 @@
+{
+  "npm": {
+    "dependencies": {
+      "@radix-ui/react-slider": "1.4.7",
+      "echarts": "6.1.0",
+      "echarts-for-react": "3.0.6",
+      "leaflet": "1.9.4",
+      "lucide-react": "1.44.0",
+      "ml-savitzky-golay": "5.0.0",
+      "next": "16.3.4",
+      "next-themes": "0.4.6",
+      "nextjs-toploader": "3.9.17",
+      "openapi-fetch": "0.17.0",
+      "react": "19.3.0",
+      "react-dom": "19.3.0",
+      "react-leaflet": "5.0.0",
+      "simplify-js": "1.2.4",
+      "zustand": "5.0.15"
+    },
+    "devDependencies": {
+      "@tailwindcss/postcss": "4.3.3",
+      "@types/leaflet": "1.9.22",
+      "@types/node": "22.20.2",
+      "@types/react": "19.3.0",
+      "@types/react-dom": "19.3.0",
+      "eslint": "9.39.5",
+      "eslint-config-next": "16.3.4",
+      "openapi-typescript": "7.13.0",
+      "postcss": "8.5.28",
+      "tailwindcss": "4.3.3",
+      "typescript": "5.9.3"
+    }
+  },
+  "nuget": {
+    "SailSight.Api": {
+      "Asp.Versioning.Mvc": "10.2.1",
+      "Asp.Versioning.Mvc.ApiExplorer": "10.2.1",
+      "Asp.Versioning.OpenApi": "10.2.3",
+      "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": "10.0.12",
+      "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "10.0.12",
+      "Microsoft.AspNetCore.OpenApi": "10.0.12",
+      "Microsoft.Extensions.ApiDescription.Server": "10.0.12",
+      "Microsoft.EntityFrameworkCore.Design": "10.0.12",
+      "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": "1.23.0",
+      "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.3",
+      "FluentValidation.DependencyInjectionExtensions": "12.1.1",
+      "Scalar.AspNetCore": "2.17.3"
+    },
+    "SailSight.Api.Tests": {
+      "Microsoft.EntityFrameworkCore.InMemory": "10.0.12",
+      "coverlet.collector": "10.0.1",
+      "Microsoft.NET.Test.Sdk": "18.10.0",
+      "xunit": "2.9.3",
+      "xunit.runner.visualstudio": "4.0.0"
+    },
+    "SailSight.Shared": {},
+    "Vakaros.Vkx.Parser": {}
+  },
+  "Microsoft.OpenApi": [
+    "Microsoft.OpenApi/2.12.0"
+  ],
+  "testRunnerCompatibility": "https://www.nuget.org/packages/xunit.runner.visualstudio/4.0.0"
+}

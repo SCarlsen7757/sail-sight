@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
@@ -54,7 +56,7 @@ export default function BoatClassesPage() {
   };
 
   const loadMyRequests = () => {
-    fetch("/api/v1/boat-classes/requests").then(async (res) => {
+    browserRequest("/api/v1/boat-classes/requests").then(async (res) => {
       if (res.ok) setMyRequests(await res.json());
     });
   };
@@ -90,13 +92,13 @@ export default function BoatClassesPage() {
     };
     const isNew = editingId === "new";
     const url = isNew ? "/api/v1/boat-classes" : `/api/v1/boat-classes/${editingId}`;
-    const res = await fetch(url, { method: isNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const res = await browserRequest(url, { method: isNew ? "POST" : "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     if (res.ok) { toast.push({ kind: "success", message: isNew ? "Created." : "Saved." }); setEditingId(null); load(); }
     else toast.push({ kind: "error", message: "Save failed." });
   };
 
   const doDelete = async (c: BoatClass) => {
-    const res = await fetch(`/api/v1/boat-classes/${c.id}`, { method: "DELETE" });
+    const res = await browserRequest(`/api/v1/boat-classes/${c.id}`, { method: "DELETE" });
     setConfirmDelete(null);
     if (res.ok || res.status === 204) { toast.push({ kind: "success", message: "Deleted." }); load(); }
     else if (res.status === 409) toast.push({ kind: "error", message: "Class is referenced by boats." });
@@ -106,7 +108,7 @@ export default function BoatClassesPage() {
   const submitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reqDraft.name) { toast.push({ kind: "warning", message: "Name required." }); return; }
-    const res = await fetch("/api/v1/boat-classes/requests", {
+    const res = await browserRequest("/api/v1/boat-classes/requests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 const API_BASE = process.env.API_BASE_URL ?? "http://localhost:5223";
 
@@ -16,12 +17,27 @@ const HOP_BY_HOP = new Set([
 const STATE_CHANGING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
+  if (STATE_CHANGING.has(req.method)) {
+    const expected = process.env.APP_ORIGIN ?? "http://localhost:8081";
+    if (req.headers.get("origin") !== expected) return NextResponse.json({ error: "invalid_origin" }, { status: 403 });
+  }
+  const length = Number(req.headers.get("content-length") ?? 0);
+  if (!Number.isFinite(length) || length > 201_048_576) return NextResponse.json({ error: "request_too_large" }, { status: 413 });
+  let bytes = 0;
+  const boundedBody = req.body?.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      bytes += chunk.byteLength;
+      if (bytes > 201_048_576) throw new Error("request_too_large");
+      controller.enqueue(chunk);
+    }
+  }));
   const target = `${API_BASE}/api/${path.join("/")}${req.nextUrl.search}`;
 
   const reqHeaders = new Headers();
   req.headers.forEach((value, key) => {
     const k = key.toLowerCase();
-    if (k === "host") return;
+    if (k === "host" || k === "forwarded" || k.startsWith("x-forwarded-")) return;
+    if (k.startsWith("x-sailsight-entry-")) return;
     if (HOP_BY_HOP.has(k)) return;
     // Strip any inbound Authorization header so the browser cannot inject
     // bearer tokens through the BFF; the API authenticates via the cookie.
@@ -30,25 +46,33 @@ async function proxy(req: NextRequest, path: string[]): Promise<NextResponse> {
     reqHeaders.set(key, value);
   });
 
-  // Forward the CSRF cookie value as the X-CSRF-Token header for state-
-  // changing requests if the client did not already set one. The API uses
-  // a double-submit cookie pattern.
-  if (STATE_CHANGING.has(req.method) && !reqHeaders.has("x-csrf-token")) {
-    const csrf = req.cookies.get("sailsight.csrf")?.value;
-    if (csrf) reqHeaders.set("x-csrf-token", csrf);
+  const client = req.headers.get("x-sailsight-entry-client");
+  const signature = req.headers.get("x-sailsight-entry-signature");
+  if (client && signature && process.env.ENTRY_PROXY_SECRET) {
+    const expected = createHmac("sha256", process.env.ENTRY_PROXY_SECRET).update(client).digest("hex");
+    if (signature.length === expected.length && timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      const [ip, scheme] = client.split("|");
+      reqHeaders.set("x-forwarded-for", ip);
+      reqHeaders.set("x-forwarded-proto", scheme);
+    }
   }
 
   const hasBody = req.method !== "GET" && req.method !== "HEAD";
 
-  const upstream = await fetch(target, {
+  let upstream: Response;
+  try { upstream = await fetch(target, {
     method: req.method,
     headers: reqHeaders,
+    signal: req.signal,
     // req.body can be null for bodyless POSTs (e.g. logout); pass undefined
     // instead of null because undici rejects a null body source.
-    body: hasBody ? (req.body ?? undefined) : undefined,
-    // @ts-expect-error
+    body: hasBody ? (boundedBody ?? undefined) : undefined,
+    // @ts-expect-error Node fetch requires duplex for streamed request bodies.
     duplex: "half",
-  });
+  }); } catch (error) {
+    if (bytes > 201_048_576) return NextResponse.json({ error: "request_too_large" }, { status: 413 });
+    throw error;
+  }
 
   // Build forwarded response headers.
   const resHeaders = new Headers();

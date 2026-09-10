@@ -19,7 +19,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<CourseLeg> CourseLegs => Set<CourseLeg>();
     public DbSet<Session> Sessions => Set<Session>();
     public DbSet<Race> Races => Set<Race>();
-    public DbSet<RaceSummaryReport> RaceSummaryReports => Set<RaceSummaryReport>();
     public DbSet<RaceLegPerformance> RaceLegPerformances => Set<RaceLegPerformance>();
 
     // Multi-user / teams
@@ -28,7 +27,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<TeamInvite> TeamInvites => Set<TeamInvite>();
     public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<SessionShare> SessionShares => Set<SessionShare>();
-    public DbSet<PersonalAccessToken> PersonalAccessTokens => Set<PersonalAccessToken>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<BoatClassRequest> BoatClassRequests => Set<BoatClassRequest>();
 
@@ -47,6 +45,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<Session>().HasOne<AppUser>().WithMany().HasForeignKey(s => s.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Boat>().HasOne<AppUser>().WithMany().HasForeignKey(s => s.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Course>().HasOne<AppUser>().WithMany().HasForeignKey(s => s.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Mark>().HasOne<AppUser>().WithMany().HasForeignKey(s => s.OwnerUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Team>().HasOne<AppUser>().WithMany().HasForeignKey(s => s.CreatedByUserId).OnDelete(DeleteBehavior.SetNull);
 
         // ── Identity tables: rename to snake_case for house style ───────────
         modelBuilder.Entity<AppUser>(e =>
@@ -241,25 +244,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         });
 
         // ── Race Summary Reports ─────────────────────────────────────────
-        modelBuilder.Entity<RaceSummaryReport>(e =>
-        {
-            e.ToTable("race_summary_reports");
-            e.HasKey(r => r.Id);
-            e.Property(r => r.Id).HasColumnName("id").ValueGeneratedNever();
-            e.Property(r => r.SessionId).HasColumnName("session_id");
-            e.Property(r => r.RaceNumber).HasColumnName("race_number");
-            e.Property(r => r.RaceId).HasColumnName("race_id");
-            e.Property(r => r.Content).HasColumnName("content").IsRequired();
-            e.Property(r => r.Model).HasColumnName("model").IsRequired();
-            e.Property(r => r.ContextHash).HasColumnName("context_hash").IsRequired();
-            e.Property(r => r.GeneratedAt).HasColumnName("generated_at");
-            e.HasIndex(r => new { r.SessionId, r.RaceNumber }).IsUnique();
-            e.HasIndex(r => r.RaceId).IsUnique();
-            e.HasOne(r => r.Session).WithMany()
-                .HasForeignKey(r => r.SessionId).OnDelete(DeleteBehavior.Cascade);
-            e.HasOne(r => r.Race).WithMany()
-                .HasForeignKey(r => r.RaceId).OnDelete(DeleteBehavior.NoAction);
-        });
 
         // ── Teams ───────────────────────────────────────────────────────────
         modelBuilder.Entity<Team>(e =>
@@ -334,22 +318,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.HasIndex(s => s.TeamId);
         });
 
-        modelBuilder.Entity<PersonalAccessToken>(e =>
-        {
-            e.ToTable("personal_access_tokens");
-            e.HasKey(p => p.Id);
-            e.Property(p => p.Id).HasColumnName("id").ValueGeneratedNever();
-            e.Property(p => p.UserId).HasColumnName("user_id");
-            e.Property(p => p.Name).HasColumnName("name").IsRequired();
-            e.Property(p => p.TokenHash).HasColumnName("token_hash").IsRequired();
-            e.Property(p => p.TokenPrefix).HasColumnName("token_prefix").IsRequired();
-            e.Property(p => p.CreatedAt).HasColumnName("created_at");
-            e.Property(p => p.ExpiresAt).HasColumnName("expires_at");
-            e.Property(p => p.LastUsedAt).HasColumnName("last_used_at");
-            e.Property(p => p.RevokedAt).HasColumnName("revoked_at");
-            e.HasIndex(p => p.UserId);
-            e.HasIndex(p => p.TokenHash).IsUnique();
-        });
 
         modelBuilder.Entity<AuditEvent>(e =>
         {

@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import { useEffect, useState } from "react";
 import type { StartAnalysis } from "@/lib/schemas";
 import { n } from "@/lib/schemas";
@@ -19,7 +21,7 @@ export function StartAnalysisPanel({ data, raceId, compact = false }: Props) {
 
   useEffect(() => {
     if (!data) return;
-    fetch(`/api/v1/races/${raceId}/analysis/start-line-length`)
+    browserRequest(`/api/v1/races/${raceId}/analysis/start-line-length`)
       .then((r) => r.ok ? r.json() : null)
       .then((v) => setLineLength(v != null && typeof v.lengthMeters !== "undefined" ? parseFloat(v.lengthMeters) : null))
       .catch(() => null);

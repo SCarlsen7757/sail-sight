@@ -17,7 +17,7 @@ namespace SailSight.Api.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.7")
+                .HasAnnotation("ProductVersion", "10.0.12")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -741,57 +741,6 @@ namespace SailSight.Api.Migrations
                     b.ToTable("marks", (string)null);
                 });
 
-            modelBuilder.Entity("SailSight.Api.Models.Entities.PersonalAccessToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<DateTimeOffset?>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("expires_at");
-
-                    b.Property<DateTimeOffset?>("LastUsedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("last_used_at");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("name");
-
-                    b.Property<DateTimeOffset?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("revoked_at");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("token_hash");
-
-                    b.Property<string>("TokenPrefix")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("token_prefix");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("personal_access_tokens", (string)null);
-                });
-
             modelBuilder.Entity("SailSight.Api.Models.Entities.PositionReading", b =>
                 {
                     b.Property<DateTimeOffset>("Time")
@@ -961,54 +910,6 @@ namespace SailSight.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("race_leg_performances", (string)null);
-                });
-
-            modelBuilder.Entity("SailSight.Api.Models.Entities.RaceSummaryReport", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Content")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("content");
-
-                    b.Property<string>("ContextHash")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("context_hash");
-
-                    b.Property<DateTimeOffset>("GeneratedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("generated_at");
-
-                    b.Property<string>("Model")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("model");
-
-                    b.Property<Guid>("RaceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("race_id");
-
-                    b.Property<int>("RaceNumber")
-                        .HasColumnType("integer")
-                        .HasColumnName("race_number");
-
-                    b.Property<Guid>("SessionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("session_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RaceId")
-                        .IsUnique();
-
-                    b.HasIndex("SessionId", "RaceNumber")
-                        .IsUnique();
-
-                    b.ToTable("race_summary_reports", (string)null);
                 });
 
             modelBuilder.Entity("SailSight.Api.Models.Entities.RaceTimerEvent", b =>
@@ -1203,7 +1104,7 @@ namespace SailSight.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<Guid>("CreatedByUserId")
+                    b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_user_id");
 
@@ -1398,6 +1299,12 @@ namespace SailSight.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("SailSight.Api.Models.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("BoatClass");
                 });
 
@@ -1423,6 +1330,12 @@ namespace SailSight.Api.Migrations
                         .WithMany()
                         .HasForeignKey("FinishMark2Id")
                         .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("SailSight.Api.Models.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("SailSight.Api.Models.Entities.Mark", "StartMark1")
                         .WithMany()
@@ -1513,6 +1426,15 @@ namespace SailSight.Api.Migrations
                     b.Navigation("Session");
                 });
 
+            modelBuilder.Entity("SailSight.Api.Models.Entities.Mark", b =>
+                {
+                    b.HasOne("SailSight.Api.Models.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("SailSight.Api.Models.Entities.PositionReading", b =>
                 {
                     b.HasOne("SailSight.Api.Models.Entities.Session", "Session")
@@ -1561,25 +1483,6 @@ namespace SailSight.Api.Migrations
                     b.Navigation("Race");
                 });
 
-            modelBuilder.Entity("SailSight.Api.Models.Entities.RaceSummaryReport", b =>
-                {
-                    b.HasOne("SailSight.Api.Models.Entities.Race", "Race")
-                        .WithMany()
-                        .HasForeignKey("RaceId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("SailSight.Api.Models.Entities.Session", "Session")
-                        .WithMany()
-                        .HasForeignKey("SessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Race");
-
-                    b.Navigation("Session");
-                });
-
             modelBuilder.Entity("SailSight.Api.Models.Entities.RaceTimerEvent", b =>
                 {
                     b.HasOne("SailSight.Api.Models.Entities.Session", "Session")
@@ -1602,6 +1505,12 @@ namespace SailSight.Api.Migrations
                         .WithMany("Sessions")
                         .HasForeignKey("CourseId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("SailSight.Api.Models.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("Boat");
 
@@ -1647,6 +1556,14 @@ namespace SailSight.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("SailSight.Api.Models.Entities.Team", b =>
+                {
+                    b.HasOne("SailSight.Api.Models.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("SailSight.Api.Models.Entities.TeamInvite", b =>

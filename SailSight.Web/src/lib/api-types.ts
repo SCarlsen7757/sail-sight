@@ -415,43 +415,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/auth/providers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["AuthProvidersDto"];
-                        "application/json": components["schemas"]["AuthProvidersDto"];
-                        "text/json": components["schemas"]["AuthProvidersDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -683,6 +646,43 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AuthProvidersDto"];
+                        "application/json": components["schemas"]["AuthProvidersDto"];
+                        "text/json": components["schemas"]["AuthProvidersDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1538,105 +1538,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/me/tokens": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["PersonalAccessTokenDto"][];
-                        "application/json": components["schemas"]["PersonalAccessTokenDto"][];
-                        "text/json": components["schemas"]["PersonalAccessTokenDto"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CreatePatRequest"];
-                    "text/json": components["schemas"]["CreatePatRequest"];
-                    "application/*+json": components["schemas"]["CreatePatRequest"];
-                };
-            };
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["CreatePatResponse"];
-                        "application/json": components["schemas"]["CreatePatResponse"];
-                        "text/json": components["schemas"]["CreatePatResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/me/tokens/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/me/invites": {
         parameters: {
             query?: never;
@@ -2303,83 +2204,6 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/races/{raceId}/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    raceId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["RaceSummaryDto"];
-                        "application/json": components["schemas"]["RaceSummaryDto"];
-                        "text/json": components["schemas"]["RaceSummaryDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    raceId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    raceId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
         options?: never;
         head?: never;
         patch?: never;
@@ -3339,15 +3163,6 @@ export interface components {
             defaultRoundingRadiusMeters: number | string;
             description: null | string;
         };
-        CreatePatRequest: {
-            name: string;
-            /** Format: int32 */
-            expiresInDays: null | number | string;
-        };
-        CreatePatResponse: {
-            token: components["schemas"]["PersonalAccessTokenDto"];
-            plaintextToken: string;
-        };
         CreateShareRequest: {
             /** Format: uuid */
             teamId: string;
@@ -3503,20 +3318,6 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
-        PersonalAccessTokenDto: {
-            /** Format: uuid */
-            id: string;
-            name: string;
-            tokenPrefix: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            expiresAt: null | string;
-            /** Format: date-time */
-            lastUsedAt: null | string;
-            /** Format: date-time */
-            revokedAt: null | string;
-        };
         PlatformStatsDto: {
             /** Format: int32 */
             boatClassCount: number | string;
@@ -3671,13 +3472,6 @@ export interface components {
             averageVelocityMadeGood: number | string;
             /** Format: float */
             maxSpeedOverGround: number | string;
-        };
-        RaceSummaryDto: {
-            content: string;
-            model: string;
-            /** Format: date-time */
-            generatedAt: string;
-            isStale: boolean;
         };
         RaceTelemetryDto: {
             positions: components["schemas"]["PositionDto"][];

@@ -1,3 +1,4 @@
+using SailSight.Api.Helpers;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -35,9 +36,9 @@ public class MarksController(AppDbContext db, ICurrentUser currentUser, RaceLegA
         }
 
         var marks = await query
-            .OrderBy(m => m.ActiveFrom).ThenBy(m => m.Name)
+            .OrderBy(m => m.ActiveFrom).ThenBy(m => m.Name).ThenBy(m => m.Id)
             .Select(m => new MarkDto(m.Id, m.Name, m.ActiveFrom, m.ActiveUntil, m.Latitude, m.Longitude, m.DefaultRoundingRadiusMeters, m.Description))
-            .ToListAsync(ct);
+            .PageAsync(HttpContext, ct);
         return Ok(marks);
     }
 

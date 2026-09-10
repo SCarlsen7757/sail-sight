@@ -12,7 +12,7 @@ public class Team
     public Guid Id { get; set; } = Guid.CreateVersion7();
     public string Name { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-    public Guid CreatedByUserId { get; set; }
+    public Guid? CreatedByUserId { get; set; }
 
     public ICollection<TeamMember> Members { get; set; } = [];
     public ICollection<TeamInvite> Invites { get; set; } = [];

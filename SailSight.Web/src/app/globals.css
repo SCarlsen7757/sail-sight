@@ -1,6 +1,31 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+@theme inline {
+  --color-bg-base: rgb(var(--bg-base));
+  --color-bg-surface: rgb(var(--bg-surface));
+  --color-bg-elevated: rgb(var(--bg-elevated));
+  --color-text-primary: rgb(var(--text-primary));
+  --color-text-secondary: rgb(var(--text-secondary));
+  --color-text-disabled: rgb(var(--text-disabled));
+  --color-border-default: rgb(var(--border-default));
+  --color-border-active: rgb(var(--border-active));
+  --color-action-primary: rgb(var(--action-primary));
+  --color-action-hover: rgb(var(--action-hover));
+  --color-sailsight-red: #FF4500;
+  --color-sailsight-orange: #FF6A00;
+  --color-success: #00FF66;
+  --color-warning: #FFCC00;
+  --color-error: #FF3333;
+  --color-info: #00CCFF;
+  --color-cyan: #00FFFF;
+  --color-magenta: #FF00FF;
+  --color-neon-green: #39FF14;
+  --color-bright-yellow: #FFFF00;
+  --color-deep-blue: #0000FF;
+  --color-vibrant-purple: #B200FF;
+  --color-amber: #FFBF00;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 
 :root {
   --bg-base: 245 247 249;

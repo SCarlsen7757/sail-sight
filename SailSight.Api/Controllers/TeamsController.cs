@@ -1,3 +1,4 @@
+using SailSight.Api.Helpers;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -20,7 +21,6 @@ namespace SailSight.Api.Controllers;
 [Route("api/v{version:apiVersion}/teams")]
 public class TeamsController(
     AppDbContext db,
-    UserManager<AppUser> userManager,
     ICurrentUser currentUser,
     IAuditService audit,
     NotificationBus notificationBus) : ControllerBase
@@ -31,10 +31,11 @@ public class TeamsController(
         var userId = currentUser.UserId;
         var teams = await db.TeamMembers
             .Where(tm => tm.UserId == userId)
+            .OrderBy(tm => tm.TeamId)
             .Select(tm => new TeamDto(
                 tm.Team.Id, tm.Team.Name, tm.Team.CreatedAt,
                 tm.Team.Members.Count, tm.Role.ToString()))
-            .ToListAsync(ct);
+            .PageAsync(HttpContext, ct);
         return Ok(teams);
     }
 
@@ -42,10 +43,12 @@ public class TeamsController(
     public async Task<ActionResult<TeamDto>> Create([FromBody] CreateTeamRequest req, CancellationToken ct)
     {
         var userId = currentUser.UserId;
+        await using var tx = await SecurityTransactions.BeginAsync(db, ct);
         var team = new Team { Name = req.Name, CreatedByUserId = userId };
         db.Teams.Add(team);
         db.TeamMembers.Add(new TeamMember { TeamId = team.Id, UserId = userId, Role = TeamRole.Owner });
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         await audit.LogAsync("team.create", "team", team.Id.ToString(), ct: ct);
         return CreatedAtAction(nameof(GetById), new { teamId = team.Id },
             new TeamDto(team.Id, team.Name, team.CreatedAt, 1, TeamRole.Owner.ToString()));
@@ -59,7 +62,7 @@ public class TeamsController(
         if (membership is null) return NotFound();
 
         var team = await db.Teams
-            .Include(t => t.Members).ThenInclude(m => m.User)
+            .Include(t => t.Members.OrderBy(m => m.UserId).Take(100)).ThenInclude(m => m.User)
             .FirstOrDefaultAsync(t => t.Id == teamId, ct);
         if (team is null) return NotFound();
 
@@ -70,17 +73,20 @@ public class TeamsController(
     [HttpPatch("{teamId:guid}")]
     public async Task<IActionResult> Update(Guid teamId, [FromBody] UpdateTeamRequest req, CancellationToken ct)
     {
+        await using var tx = await SecurityTransactions.BeginAsync(db, ct);
         if (!await IsAdminAsync(teamId, ct)) return Forbid();
         var team = await db.Teams.FindAsync([teamId], ct);
         if (team is null) return NotFound();
         team.Name = req.Name;
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return Ok();
     }
 
     [HttpDelete("{teamId:guid}")]
     public async Task<IActionResult> Delete(Guid teamId, CancellationToken ct)
     {
+        await using var tx = await SecurityTransactions.BeginAsync(db, ct);
         var userId = currentUser.UserId;
         var membership = await db.TeamMembers.FirstOrDefaultAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct);
         if (membership is null || membership.Role != TeamRole.Owner) return Forbid();
@@ -88,6 +94,7 @@ public class TeamsController(
         if (team is null) return NotFound();
         db.Teams.Remove(team);
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         await audit.LogAsync("team.delete", "team", teamId.ToString(), ct: ct);
         return NoContent();
     }
@@ -99,20 +106,28 @@ public class TeamsController(
         if (!await db.TeamMembers.AnyAsync(tm => tm.TeamId == teamId && tm.UserId == userId, ct)) return NotFound();
         var members = await db.TeamMembers
             .Where(m => m.TeamId == teamId)
+            .OrderBy(m => m.UserId)
             .Select(m => new TeamMemberDto(m.UserId, m.User.Email!, m.User.DisplayName, m.Role.ToString(), m.JoinedAt))
-            .ToListAsync(ct);
+            .PageAsync(HttpContext, ct);
         return Ok(members);
     }
 
     [HttpPatch("{teamId:guid}/members/{memberId:guid}")]
     public async Task<IActionResult> UpdateMemberRole(Guid teamId, Guid memberId, [FromBody] UpdateMemberRoleRequest req, CancellationToken ct)
     {
+        await using var tx = await SecurityTransactions.BeginAsync(db, ct);
         if (!await IsAdminAsync(teamId, ct)) return Forbid();
-        if (!Enum.TryParse<TeamRole>(req.Role, ignoreCase: true, out var role)) return BadRequest();
+        if (!SecurityTransactions.TryTeamRole(req.Role, out var role)) return BadRequest();
         var member = await db.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == memberId, ct);
         if (member is null) return NotFound();
+        var actor = await db.TeamMembers.SingleAsync(m => m.TeamId == teamId && m.UserId == currentUser.UserId, ct);
+        if (!SecurityTransactions.CanManage(actor.Role, member.Role, role)) return Forbid();
+        if (member.Role == TeamRole.Owner && role != TeamRole.Owner &&
+            await db.TeamMembers.CountAsync(m => m.TeamId == teamId && m.Role == TeamRole.Owner, ct) <= 1)
+            return Conflict(new { error = "cannot_demote_last_owner" });
         member.Role = role;
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         await audit.LogAsync("team.role_change", "team_member", $"{teamId}:{memberId}", details: role.ToString(), ct: ct);
         return Ok();
     }
@@ -120,6 +135,7 @@ public class TeamsController(
     [HttpDelete("{teamId:guid}/members/{memberId:guid}")]
     public async Task<IActionResult> RemoveMember(Guid teamId, Guid memberId, CancellationToken ct)
     {
+        await using var tx = await SecurityTransactions.BeginAsync(db, ct);
         var userId = currentUser.UserId;
         // Allow self-removal or admin removal.
         var requester = await db.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == userId, ct);
@@ -128,24 +144,30 @@ public class TeamsController(
 
         var target = await db.TeamMembers.FirstOrDefaultAsync(m => m.TeamId == teamId && m.UserId == memberId, ct);
         if (target is null) return NotFound();
+        if (memberId != userId && !SecurityTransactions.CanManage(requester.Role, target.Role, TeamRole.Member)) return Forbid();
         // Prevent removing the last owner.
         if (target.Role == TeamRole.Owner)
         {
             var ownerCount = await db.TeamMembers.CountAsync(m => m.TeamId == teamId && m.Role == TeamRole.Owner, ct);
-            if (ownerCount <= 1) return BadRequest(new { error = "cannot_remove_last_owner" });
+            if (ownerCount <= 1) return Conflict(new { error = "cannot_remove_last_owner" });
         }
         db.TeamMembers.Remove(target);
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return NoContent();
     }
 
     [HttpPost("{teamId:guid}/invites")]
     public async Task<ActionResult<TeamInviteDto>> Invite(Guid teamId, [FromBody] InviteMemberRequest req, CancellationToken ct)
     {
+        await using var tx = await SecurityTransactions.BeginAsync(db, ct);
         if (!await IsAdminAsync(teamId, ct)) return Forbid();
-        if (!Enum.TryParse<TeamRole>(req.Role, ignoreCase: true, out var role)) return BadRequest();
+        if (!SecurityTransactions.TryTeamRole(req.Role, out var role)) return BadRequest();
 
-        var invitee = await userManager.FindByEmailAsync(req.Email);
+        var actor = await db.TeamMembers.SingleAsync(m => m.TeamId == teamId && m.UserId == currentUser.UserId, ct);
+        if (!SecurityTransactions.CanManage(actor.Role, TeamRole.Member, role)) return Forbid();
+        var normalizedEmail = req.Email.ToUpperInvariant();
+        var invitee = await db.Users.FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail, ct);
         if (invitee is null) return NotFound(new { error = "user_not_found" });
 
         var alreadyMember = await db.TeamMembers.AnyAsync(m => m.TeamId == teamId && m.UserId == invitee.Id, ct);
@@ -165,6 +187,7 @@ public class TeamsController(
         };
         db.TeamInvites.Add(invite);
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         await audit.LogAsync("team.invite", "team", teamId.ToString(), details: req.Email, ct: ct);
         notificationBus.Notify(invitee.Id);
 
@@ -178,8 +201,9 @@ public class TeamsController(
 
         var invites = await db.TeamInvites
             .Where(i => i.TeamId == teamId && i.AcceptedAt == null && i.DeclinedAt == null && i.ExpiresAt > DateTimeOffset.UtcNow)
+            .OrderBy(i => i.Id)
             .Select(i => new TeamPendingInviteDto(i.Id, i.InvitedUserId, i.Email, i.InvitedUser.DisplayName, i.Role, i.CreatedAt, i.ExpiresAt))
-            .ToListAsync(ct);
+            .PageAsync(HttpContext, ct);
 
         return Ok(invites);
     }
@@ -203,8 +227,8 @@ public class TeamsController(
             .Include(s => s.Course)
             .Include(s => s.Races)
             .Include(s => s.Shares).ThenInclude(sh => sh.Team)
-            .OrderByDescending(s => s.StartedAt)
-            .ToListAsync(ct);
+            .OrderByDescending(s => s.StartedAt).ThenBy(s => s.Id)
+            .PageAsync(HttpContext, ct);
 
         var userTeamIds = await db.TeamMembers.Where(m => m.UserId == userId).Select(m => m.TeamId).ToListAsync(ct);
 

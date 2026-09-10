@@ -14,7 +14,7 @@ marks, and courses). Users can collaborate by organising into teams and sharing 
 ### Application Constraints
 
 - **Authentication modes** – the backend operates in one of two modes configured server-side:
-  - **MultiUser** (default) – full authentication with email/password accounts, roles, teams, and personal access tokens. New users are invited by an admin or via a shareable invitation link.
+  - **MultiUser** (default) – full authentication with email/password accounts, roles and teams. New users are invited by an admin or via a shareable invitation link.
   - **SingleUser** – authentication is disabled; all requests are treated as the system user. A yellow info banner is shown at the top of every authenticated page to indicate that auth is bypassed.
 - **Browser support** – target the latest stable release of Chrome, Firefox, Edge, and Safari only. No support for legacy or end-of-life browser versions is required.
 - **Responsive breakpoints** – use the following pixel thresholds:
@@ -484,31 +484,9 @@ The **time bias** row is the most prominent element and uses a larger font. The 
 
 When the `startAnalysis` panel is visible, the map also highlights the **crossing point** on the track with a distinct marker. Hovering the marker shows a tooltip with the crossing time and time bias.
 
-#### 5.8 AI Race Summary Report
+#### 5.8 Deferred AI reports
 
-A panel in the right column, rendered below the Start Analysis panel (or below the playback controls when no start analysis is available). It is always present because the report can be generated without start line data.
-
-**The report is never auto-generated.** The user must explicitly click **Generate Report** to trigger generation.
-
-**Panel states:**
-
-| State | UI |
-| --- | --- |
-| No report exists | A **Generate Report** button with a short description: *"Get an AI-written analysis of this race."* |
-| Generating | The button is replaced by a spinner and a **Stop** button. Markdown text streams into the panel token-by-token as the response arrives via SSE. |
-| Report exists, up to date | The full markdown report rendered as formatted text. Below it: a **Regenerate** button and a **Delete** button, plus a secondary timestamp: *"Generated on [date/time]."* |
-| Report exists, stale | Same as above but with an amber info banner at the top of the panel: *"The race details have changed since this report was generated. Regenerate for an updated analysis."* |
-| Generation failed | An error banner: *"Report generation failed. Try again later."* The Generate Report button is restored. |
-
-**Behaviour details:**
-
-- On page load the frontend calls `GET .../summary`. If `200` is returned the report is shown. If `404` is returned the Generate button is shown.
-- Clicking **Generate Report** or **Regenerate** calls `POST .../summary`, which streams tokens via SSE. The frontend renders tokens incrementally as they arrive.
-- Clicking **Stop** during generation cancels the SSE stream. The partial report is **not** saved. The panel reverts to showing the previous report (if any) or the Generate button.
-- On stream completion (`[DONE]` sentinel received) the frontend calls `GET .../summary` to retrieve the final persisted report and replaces the streamed content with the saved version.
-- Clicking **Delete** calls `DELETE .../summary` (`204 No Content`) and returns the panel to the Generate button state. No confirmation dialog is required — the report can always be regenerated.
-- The `isStale` flag is read from the `GET` response to determine whether to show the amber staleness banner.
-- The report content is rendered as **Markdown** (headings, bullet points, bold text). A **Copy to clipboard** button appears in the panel header when a report is present.
+AI report UI and API functionality are removed from this release. Future user-owned credentials and reports are tracked in [issue #3](https://github.com/SCarlsen7757/sail-sight/issues/3).
 
 ---
 
@@ -760,11 +738,7 @@ Personal account management page.
 - Current password, new password, and confirm new password fields.
 - Explicit **Save** button; shows success or error toast.
 
-**Personal access tokens (PAT):**
-- Token list shows: name, creation date, prefix (first few characters for identification), and a **Revoke** button per token.
-- A **Create token** form collects a token name and generates a new token on submit.
-- The full token value is displayed **once only** after creation (with a warning that it will not be shown again). The user must copy it before leaving the panel.
-- Tokens use the prefix `vkx_` for identification in API clients.
+Personal access tokens are deferred; issuance and bearer authentication are removed. See [issue #4](https://github.com/SCarlsen7757/sail-sight/issues/4).
 
 **Sign out:**
 A **Sign out** danger button at the bottom of the page. Calls the logout endpoint and redirects to `/login`.
@@ -837,3 +811,13 @@ All endpoints are defined in the OpenAPI specification generated by the `SailSig
 | Users (admin) | List, Create, Update role, Delete, Setup link |
 | Invitations (admin) | List, Create, Revoke |
 | Personal Access Tokens | List, Create, Revoke |
+
+## Security implementation and follow-ups
+
+The [implementation report](../../docs/security/implementation.md) supersedes earlier security/deployment assumptions in this design. It records verification results and the remaining release gates.
+
+- [AI credentials and reports #3](https://github.com/SCarlsen7757/sail-sight/issues/3)
+- [Personal access tokens #4](https://github.com/SCarlsen7757/sail-sight/issues/4)
+- [External identity integration #5](https://github.com/SCarlsen7757/sail-sight/issues/5)
+- [Cloudflare Tunnel deployment #6](https://github.com/SCarlsen7757/sail-sight/issues/6)
+- [Dependency compatibility exceptions #7](https://github.com/SCarlsen7757/sail-sight/issues/7)

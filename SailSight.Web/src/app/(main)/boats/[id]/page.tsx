@@ -1,5 +1,7 @@
 "use client";
 
+import { browserRequest } from "@/lib/browser-request";
+
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -41,7 +43,7 @@ export default function BoatDetailPage({ params }: { params: Promise<{ id: strin
   }, [id]);
 
   const save = async () => {
-    const res = await fetch(`/api/v1/boats/${id}`, {
+    const res = await browserRequest(`/api/v1/boats/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -57,7 +59,7 @@ export default function BoatDetailPage({ params }: { params: Promise<{ id: strin
   };
 
   const doDelete = async () => {
-    const res = await fetch(`/api/v1/boats/${id}`, { method: "DELETE" });
+    const res = await browserRequest(`/api/v1/boats/${id}`, { method: "DELETE" });
     setConfirm(false);
     if (res.ok || res.status === 204) { toast.push({ kind: "success", message: "Deleted." }); router.push("/boats"); }
     else if (res.status === 409) toast.push({ kind: "error", message: "Boat is referenced by sessions." });

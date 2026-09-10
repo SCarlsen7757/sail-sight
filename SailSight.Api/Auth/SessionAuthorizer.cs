@@ -10,6 +10,25 @@ namespace SailSight.Api.Auth;
 /// </summary>
 public sealed class SessionAuthorizer(AppDbContext db, ICurrentUser currentUser, AuthOptions auth)
 {
+    public IQueryable<Guid> PrivateSessionIds()
+    {
+        if (!currentUser.IsAuthenticated) return db.Sessions.Where(s => false).Select(s => s.Id);
+        var uid = currentUser.UserId;
+        return db.Sessions.Where(s => s.OwnerUserId == uid ||
+            s.Shares.Any(sh => db.TeamMembers.Any(m => m.TeamId == sh.TeamId && m.UserId == uid)))
+            .Select(s => s.Id);
+    }
+
+    public Task<bool> CanReadPrivateAsync(Guid id, CancellationToken ct = default) => PrivateSessionIds().ContainsAsync(id, ct);
+
+    public Task<bool> OwnsBoatAsync(Guid id, CancellationToken ct) =>
+        db.Boats.AnyAsync(b => b.Id == id && b.OwnerUserId == currentUser.UserId, ct);
+    public Task<bool> OwnsCourseAsync(Guid id, CancellationToken ct) =>
+        db.Courses.AnyAsync(c => c.Id == id && c.OwnerUserId == currentUser.UserId, ct);
+
+    public static string PublicTitle(Models.Entities.Session session) =>
+        string.IsNullOrWhiteSpace(session.DisplayName) ? $"Session {session.StartedAt:yyyy-MM-dd}" : session.DisplayName;
+
     public Task<bool> CanReadAsync(Guid sessionId, CancellationToken ct = default) => CanAsync(sessionId, write: false, ct);
     public Task<bool> CanWriteAsync(Guid sessionId, CancellationToken ct = default) => CanAsync(sessionId, write: true, ct);
 

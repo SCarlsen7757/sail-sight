@@ -5,7 +5,7 @@ services:
   db:
     # Expose DB to the Windows host so tools like pgAdmin / DataGrip can connect.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
   web:
     build:
@@ -24,7 +24,7 @@ services:
       # Enable Node.js inspector so VS (or Chrome DevTools) can attach a debugger.
       NODE_OPTIONS: "--inspect=0.0.0.0:9229"
     ports:
-      - "9229:9229"
+      - "127.0.0.1:9229:9229"
 
 volumes:
   # Preserves the node_modules built into the image so they are not shadowed

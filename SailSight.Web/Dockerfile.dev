@@ -2,7 +2,8 @@
 # Source code is mounted as a volume at runtime, so JS/TS changes hot-reload
 # instantly without rebuilding this image.
 # Rebuild this image only when package.json dependencies change.
-FROM node:25-alpine
+FROM node:26.8.2-alpine@sha256:ef24c5053d50fdc3e4e56eb4e7ddb7861874ab0fdc797046ba897581deb8e868
+RUN apk add --no-cache 'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0'
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci

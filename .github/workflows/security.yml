@@ -1,0 +1,74 @@
+name: Security checks
+on:
+  pull_request:
+  push:
+    branches: [main, feature/frontend/rework]
+  schedule:
+    - cron: '19 5 * * 1'
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  tests-and-advisories:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '10.0.401'
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '26.8.2'
+      - run: npm ci --prefix SailSight.Web
+      - run: dotnet test SailSight.Api.Tests/SailSight.Api.Tests.csproj -p:SkipTypeScriptGeneration=true
+      - run: npm run gen:api --prefix SailSight.Web && git diff --exit-code -- SailSight.Api/OpenApi SailSight.Web/src/lib/api-types.ts
+      - run: npm run lint --prefix SailSight.Web
+      - run: npm run typecheck --prefix SailSight.Web
+      - run: npm audit --prefix SailSight.Web --audit-level=high
+      - run: dotnet list SailSight.Api/SailSight.Api.csproj package --vulnerable --include-transitive --format json > nuget-audit.json
+      - run: python scripts/check-nuget-audit.py nuget-audit.json
+  containers:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: api
+            file: SailSight.Api/Dockerfile
+            context: .
+          - name: web
+            file: SailSight.Web/Dockerfile
+            context: SailSight.Web
+          - name: db
+            file: deployment/Dockerfile
+            context: deployment
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - run: docker build -t sailsight-${{ matrix.name }}:security -f ${{ matrix.file }} ${{ matrix.context }}
+      - uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        with:
+          image-ref: sailsight-${{ matrix.name }}:security
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: false
+  runtime-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - run: python scripts/create-security-test-env.py
+      - run: docker compose --env-file .security-compose.env -p sailsight-security-compose -f docker-compose.yml up -d --build --wait
+      - run: curl --fail --silent --retry 30 --retry-delay 2 --retry-all-errors http://localhost:8080/api/v1/auth/providers > /dev/null
+      - run: python scripts/security-integration.py
+        env:
+          SECURITY_API_ROOT: http://localhost:8080/api/v1
+          SECURITY_ORIGIN: http://localhost:8081
+          SECURITY_TEST_ENV: .security-compose.env
+          SECURITY_ADMIN_EMAIL: compose-admin@test.local
+      - run: python scripts/upload-boundary.py
+      - run: python scripts/ingestion-workload.py
+      - run: |
+          docker cp scripts/proxy-rate-test.mjs sailsight-security-compose-web-1:/tmp/proxy-rate-test.mjs
+          docker exec sailsight-security-compose-web-1 node /tmp/proxy-rate-test.mjs
+      - if: always()
+        run: docker compose --env-file .security-compose.env -p sailsight-security-compose -f docker-compose.yml down

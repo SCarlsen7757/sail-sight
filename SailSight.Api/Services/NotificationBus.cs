@@ -8,28 +8,28 @@ namespace SailSight.Api.Services;
 /// </summary>
 public sealed class NotificationBus
 {
-    private readonly ConcurrentDictionary<Guid, Channel<byte>> _channels = new();
+    private readonly ConcurrentDictionary<(Guid UserId, ChannelReader<byte> Reader), Channel<byte>> _channels = new();
 
     /// <summary>Subscribes a user to the bus and returns a reader they can await.</summary>
     public ChannelReader<byte> Subscribe(Guid userId)
     {
-        var channel = Channel.CreateUnbounded<byte>(new UnboundedChannelOptions { SingleReader = true });
-        _channels[userId] = channel;
+        var channel = Channel.CreateBounded<byte>(new BoundedChannelOptions(1) { SingleReader = true, FullMode = BoundedChannelFullMode.DropOldest });
+        _channels[(userId, channel.Reader)] = channel;
         return channel.Reader;
     }
 
     /// <summary>Unsubscribes a user and completes their channel.</summary>
-    public void Unsubscribe(Guid userId)
+    public void Unsubscribe(Guid userId, ChannelReader<byte> reader)
     {
-        if (_channels.TryRemove(userId, out var channel))
+        if (_channels.TryRemove((userId, reader), out var channel))
             channel.Writer.TryComplete();
     }
 
     /// <summary>Pushes a notification update to a specific user if they are connected.</summary>
     public void Notify(Guid userId)
     {
-        if (_channels.TryGetValue(userId, out var channel))
-            channel.Writer.TryWrite(0);
+        foreach (var entry in _channels)
+            if (entry.Key.UserId == userId) entry.Value.Writer.TryWrite(0);
     }
 
     /// <summary>Pushes a notification update to all currently connected users.</summary>

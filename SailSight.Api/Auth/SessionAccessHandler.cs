@@ -10,10 +10,7 @@ public sealed class SessionAccessRequirement(bool requireWrite) : IAuthorization
     public bool RequireWrite { get; } = requireWrite;
 }
 
-public sealed class SessionAccessHandler(
-    AppDbContext db,
-    ICurrentUser currentUser,
-    AuthOptions auth)
+public sealed class SessionAccessHandler(SessionAuthorizer authorizer)
     : AuthorizationHandler<SessionAccessRequirement, Guid>
 {
     protected override async Task HandleRequirementAsync(
@@ -21,31 +18,7 @@ public sealed class SessionAccessHandler(
         SessionAccessRequirement requirement,
         Guid sessionId)
     {
-        if (!currentUser.IsAuthenticated) return;
-
-        if (auth.IsSingleUser)
-        {
+        if (requirement.RequireWrite ? await authorizer.CanWriteAsync(sessionId) : await authorizer.CanReadAsync(sessionId))
             context.Succeed(requirement);
-            return;
-        }
-
-        var userId = currentUser.UserId;
-
-        // Owner always has access.
-        var isOwner = await db.Sessions
-            .AnyAsync(s => s.Id == sessionId && s.OwnerUserId == userId);
-        if (isOwner) { context.Succeed(requirement); return; }
-
-        // Otherwise, must be in a team that has a share (all shares grant read access; write = owner only).
-        if (requirement.RequireWrite) return;
-
-        var hasShare = await (
-            from share in db.SessionShares
-            where share.SessionId == sessionId
-            join member in db.TeamMembers on share.TeamId equals member.TeamId
-            where member.UserId == userId
-            select share.SessionId).AnyAsync();
-
-        if (hasShare) context.Succeed(requirement);
     }
 }

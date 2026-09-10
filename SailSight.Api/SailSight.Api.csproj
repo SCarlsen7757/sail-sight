@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -13,6 +13,7 @@
     <Task>
       <Code Type="Fragment" Language="cs">
         System.Environment.SetEnvironmentVariable("SKIP_DB_MIGRATION", "true");
+        System.Environment.SetEnvironmentVariable("Web__PublicBaseUrl", "https://localhost");
       </Code>
     </Task>
   </UsingTask>
@@ -22,36 +23,24 @@
   </Target>
 
   <ItemGroup>
-    <PackageReference Include="Asp.Versioning.Mvc" Version="10.0.0" />
-    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.0.0" />
-    <PackageReference Include="Asp.Versioning.OpenApi" Version="10.0.0-rc.1" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
-    <!--
-      Direct pin only to lift a transitive dependency. Microsoft.AspNetCore.OpenApi
-      declares Microsoft.OpenApi >= 2.0.0, and NuGet resolves the floor - but 2.0.0
-      carries GHSA-v5pm-xwqc-g5wc (high: circular schema references can terminate
-      parsing), affecting <= 2.7.4. 2.7.5 is the first patched 2.x.
-      Staying on 2.x deliberately: 3.x has breaking API changes that
-      Microsoft.AspNetCore.OpenApi 10.0.10 is not compiled against.
-      Remove this line once the framework package's floor moves past 2.7.5.
-    -->
-    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
-    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.10">
+    <PackageReference Include="Asp.Versioning.Mvc" Version="10.2.1" />
+    <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="10.2.1" />
+    <PackageReference Include="Asp.Versioning.OpenApi" Version="10.2.3" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
-    <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.1" />
-    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.1" />
-    <PackageReference Include="Scalar.AspNetCore" Version="2.16.16" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.17.3" />
   </ItemGroup>
 
   <ItemGroup>

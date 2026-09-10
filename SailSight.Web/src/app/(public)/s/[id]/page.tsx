@@ -30,7 +30,7 @@ export default function PublicSessionDetailPage({ params }: { params: Promise<{ 
     return <ErrorBanner message="This session is not public." />;
   }
 
-  const title = session.displayName ?? session.fileName;
+  const title = session.displayName ?? `Session ${new Date(session.startedAt).toLocaleDateString()}`;
   const duration = (new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000;
   const races = (session.races ?? []) as Race[];
 
@@ -43,9 +43,7 @@ export default function PublicSessionDetailPage({ params }: { params: Promise<{ 
           <Globe className="h-3 w-3" /> Public
         </span>
       </div>
-      {session.displayName && (
-        <div className="text-sm text-text-secondary">File: {session.fileName}</div>
-      )}
+      {session.fileName && <div className="text-sm text-text-secondary">File: {session.fileName}</div>}
 
       <Card className="p-4">
         <h2 className="mb-3 text-lg font-semibold">Overview</h2>
