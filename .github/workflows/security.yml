@@ -2,7 +2,7 @@ name: Security checks
 on:
   pull_request:
   push:
-    branches: [main, feature/frontend/rework]
+    branches: [main]
   schedule:
     - cron: '19 5 * * 1'
   workflow_dispatch:
