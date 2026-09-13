@@ -1,5 +1,13 @@
 # Agent Instructions — SailSight
 
+## Pre-v1 Development Policy
+
+Until the first stable v1 release (`v1.0.0`), breaking changes are allowed across APIs, database schemas, configuration, and user flows. Prefer a clean implementation over preserving backward compatibility with unreleased versions.
+
+Development and test databases are disposable during this period. Agents may wipe and recreate them, and replace or consolidate migrations when needed for the task, without separate approval. Verify the target is the intended SailSight development/test database before resetting it, and document any required reset in the change description. This permission does not extend to production databases or unrelated data.
+
+Keep fresh-database setup working. Once `v1.0.0` is released, this blanket permission expires: preserve released compatibility and data through migrations, and obtain explicit approval for destructive resets.
+
 ## Build & Run
 
 ```bash
