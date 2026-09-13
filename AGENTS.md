@@ -1,4 +1,4 @@
-# Copilot Instructions — SailSight
+# Agent Instructions — SailSight
 
 ## Build & Run
 
