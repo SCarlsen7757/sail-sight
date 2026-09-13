@@ -38,7 +38,7 @@ jobs:
       #   PR #42      -> pr-42 (built, never pushed)
       - name: Docker metadata
         id: meta
-        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ghcr.io/${{ github.repository_owner }}/sail-sight-api
           flavor: latest=auto
