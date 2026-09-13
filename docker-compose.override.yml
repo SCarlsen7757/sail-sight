@@ -1,0 +1,36 @@
+# Development overrides — merged automatically by Docker Compose and Visual Studio.
+# Enables hot-reload for the web frontend and exposes the DB port for tooling.
+# Do NOT commit secrets here; use a .env file for sensitive values.
+services:
+  db:
+    # Expose DB to the Windows host so tools like pgAdmin / DataGrip can connect.
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  web:
+    build:
+      context: SailSight.Web
+      dockerfile: Dockerfile.dev
+    # Mount source so Next.js picks up file changes without a Docker rebuild.
+    volumes:
+      - ./SailSight.Web:/app
+      - web_node_modules:/app/node_modules
+      # Isolate the Next.js build cache from the host so stale chunks never
+      # shadow a fresh in-container compilation after source changes.
+      - web_next_cache:/app/.next
+    environment:
+      # Required for Next.js file-watching to work on Windows / WSL2 volume mounts.
+      WATCHPACK_POLLING: "true"
+      # Enable Node.js inspector so VS (or Chrome DevTools) can attach a debugger.
+      NODE_OPTIONS: "--inspect=0.0.0.0:9229"
+    ports:
+      - "127.0.0.1:9229:9229"
+
+volumes:
+  # Preserves the node_modules built into the image so they are not shadowed
+  # by the host bind-mount above.  Rebuild the image (docker compose build web)
+  # whenever package.json dependencies change.
+  web_node_modules:
+  # Isolates the Next.js build output from the host so a stale .next directory
+  # never causes chunk-ID mismatches after source changes.
+  web_next_cache:

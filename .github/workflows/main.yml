@@ -1,0 +1,29 @@
+name: Main
+
+# Build merged changes without publishing. Only release jobs publish images.
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: main
+  cancel-in-progress: true
+
+jobs:
+  docker-api:
+    name: Docker Build — API
+    uses: ./.github/workflows/_docker-api.yml
+    with:
+      push: false
+    permissions:
+      contents: read
+
+  docker-web:
+    name: Docker Build — Web
+    uses: ./.github/workflows/_docker-web.yml
+    with:
+      push: false
+    permissions:
+      contents: read

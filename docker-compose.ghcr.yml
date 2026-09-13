@@ -1,0 +1,83 @@
+# Private-network deployment; configure a trusted HTTPS ingress before sharing.
+# See docs/security/implementation.md for setup and migration instructions.
+services:
+  db:
+    image: sailsightdb
+    build:
+      context: ./deployment
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sailsight
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set migration database password}
+      POSTGRES_DB: sailsight
+      RUNTIME_DB_PASSWORD: ${RUNTIME_DB_PASSWORD:?set separate runtime database password}
+    volumes:
+      - ${DATA_DIR:-./data}/db:/home/postgres/pgdata
+      - ./deployment/init-runtime-role.sh:/docker-entrypoint-initdb.d/20-runtime-role.sh:ro
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U sailsight]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    image: ${SAILSIGHT_API_IMAGE:?set released API image with sha256 digest}
+    volumes:
+      - ${AUTH_KEY_CERTIFICATE_PATH:?set certificate path}:/run/secrets/auth-keys.pfx:ro
+    command: [--migrate-only]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: &api-environment
+      ASPNETCORE_ENVIRONMENT: Production
+      LocalProfile: "false"
+      Database__AutoMigrate: "false"
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__Default: Host=db;Database=sailsight;Username=sailsight_runtime;Password=${RUNTIME_DB_PASSWORD}
+      ConnectionStrings__Migration: Host=db;Database=sailsight;Username=sailsight;Password=${POSTGRES_PASSWORD}
+      Auth__Mode: MultiUser
+      Auth__Admin__Email: ${AUTH_ADMIN_EMAIL:?set initial administrator email}
+      Auth__Admin__Password: ${AUTH_ADMIN_PASSWORD:-}
+      Web__PublicBaseUrl: ${PUBLIC_BASE_URL:?set HTTPS PUBLIC_BASE_URL}
+      TrustedProxies__0: 172.30.89.3
+      Auth__KeyCertificatePath: /run/secrets/auth-keys.pfx
+      Auth__KeyCertificatePassword: ${AUTH_KEY_CERTIFICATE_PASSWORD:?set certificate password}
+
+  api:
+    image: ${SAILSIGHT_API_IMAGE:?set released API image with sha256 digest}
+    volumes:
+      - ${AUTH_KEY_CERTIFICATE_PATH:?set certificate path}:/run/secrets/auth-keys.pfx:ro
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *api-environment
+      ConnectionStrings__Migration: ""
+      Auth__Admin__Password: ""
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  web:
+    image: ${SAILSIGHT_WEB_IMAGE:?set released web image with sha256 digest}
+    restart: unless-stopped
+    depends_on: [api]
+    networks:
+      default:
+        ipv4_address: 172.30.89.3
+    environment:
+      API_BASE_URL: http://api:8080
+      APP_ORIGIN: ${PUBLIC_BASE_URL:?set HTTPS PUBLIC_BASE_URL}
+      TRUSTED_INGRESS_PROXIES: ${TRUSTED_INGRESS_PROXIES:-}
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8081}:3000"
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.89.0/24
+          ip_range: 172.30.89.128/25

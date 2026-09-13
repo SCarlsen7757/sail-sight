@@ -1,0 +1,98 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+@theme inline {
+  --color-bg-base: rgb(var(--bg-base));
+  --color-bg-surface: rgb(var(--bg-surface));
+  --color-bg-elevated: rgb(var(--bg-elevated));
+  --color-text-primary: rgb(var(--text-primary));
+  --color-text-secondary: rgb(var(--text-secondary));
+  --color-text-disabled: rgb(var(--text-disabled));
+  --color-border-default: rgb(var(--border-default));
+  --color-border-active: rgb(var(--border-active));
+  --color-action-primary: rgb(var(--action-primary));
+  --color-action-hover: rgb(var(--action-hover));
+  --color-sailsight-red: #FF4500;
+  --color-sailsight-orange: #FF6A00;
+  --color-success: #00FF66;
+  --color-warning: #FFCC00;
+  --color-error: #FF3333;
+  --color-info: #00CCFF;
+  --color-cyan: #00FFFF;
+  --color-magenta: #FF00FF;
+  --color-neon-green: #39FF14;
+  --color-bright-yellow: #FFFF00;
+  --color-deep-blue: #0000FF;
+  --color-vibrant-purple: #B200FF;
+  --color-amber: #FFBF00;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+:root {
+  --bg-base: 245 247 249;
+  --bg-surface: 255 255 255;
+  --bg-elevated: 255 255 255;
+  --text-primary: 17 24 39;
+  --text-secondary: 107 114 128;
+  --text-disabled: 156 163 175;
+  --border-default: 229 231 235;
+  --border-active: 255 69 0;
+  --action-primary: 255 69 0;
+  --action-hover: 255 106 0;
+}
+
+.dark {
+  --bg-base: 15 17 21;
+  --bg-surface: 26 29 36;
+  --bg-elevated: 37 41 51;
+  --text-primary: 249 250 251;
+  --text-secondary: 156 163 175;
+  --text-disabled: 75 85 99;
+  --border-default: 55 65 81;
+  --border-active: 0 204 255;
+}
+
+html, body { height: 100%; }
+body {
+  background-color: rgb(var(--bg-base));
+  color: rgb(var(--text-primary));
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--border-default) / 0.25) 25%,
+    rgb(var(--border-default) / 0.55) 50%,
+    rgb(var(--border-default) / 0.25) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Parent container: one wave sweeps across all child skeleton bars simultaneously */
+.shimmer-container {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(var(--bg-elevated) / 0.18) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.leaflet-container { background: rgb(var(--bg-surface)); }

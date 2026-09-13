@@ -1,0 +1,32 @@
+name: Build Web
+description: Installs dependencies and builds the SailSight.Web Next.js project.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+      with:
+        node-version: "26.8.2"
+        cache: npm
+        cache-dependency-path: SailSight.Web/package-lock.json
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: SailSight.Web
+      run: npm ci
+
+    - name: Build
+      shell: bash
+      working-directory: SailSight.Web
+      run: npm run build
+
+    - name: Lint
+      shell: bash
+      working-directory: SailSight.Web
+      run: npm run lint
+
+    - name: Type check
+      shell: bash
+      working-directory: SailSight.Web
+      run: npm run typecheck

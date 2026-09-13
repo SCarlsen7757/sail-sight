@@ -1,0 +1,57 @@
+# Configures GitHub's automatically generated release notes.
+# Applies when notes are generated via the "Generate release notes" button,
+# `gh release create --generate-notes`, or the releases/generate-notes API.
+#
+# Categories are matched IN ORDER and a PR lands in the FIRST one it matches,
+# so the ordering below is deliberate: `breaking change` and `security` are
+# meta/type labels that must win over the plain type label a PR also carries.
+# The `*` catch-all must stay last or it would swallow everything.
+
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - wontfix
+      - needs info
+
+  categories:
+    - title: ⚠️ Breaking Changes
+      labels:
+        - breaking change
+
+    - title: 🔒 Security
+      labels:
+        - security
+
+    - title: ✨ Features
+      labels:
+        - feature
+
+    - title: 🐛 Bug Fixes
+      labels:
+        - bug
+
+    - title: ⚡ Performance
+      labels:
+        - performance
+
+    - title: 📖 Documentation
+      labels:
+        - documentation
+
+    # Before `chore`, because dependency bumps usually carry both labels
+    # and would otherwise be buried in maintenance.
+    - title: 📦 Dependencies
+      labels:
+        - dependencies
+
+    - title: 🧹 Maintenance
+      labels:
+        - refactor
+        - chore
+
+    # Anything merged without a type label. A non-empty section here means
+    # the PR labelling in .claude/skills/create-pr slipped.
+    - title: 🔎 Uncategorised
+      labels:
+        - "*"
