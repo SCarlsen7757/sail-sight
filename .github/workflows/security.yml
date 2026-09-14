@@ -13,7 +13,7 @@ jobs:
   tests-and-advisories:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: '10.0.401'
@@ -43,7 +43,7 @@ jobs:
             file: deployment/Dockerfile
             context: deployment
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build -t sailsight-${{ matrix.name }}:security -f ${{ matrix.file }} ${{ matrix.context }}
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
         with:
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: python scripts/create-security-test-env.py
       - run: docker compose --env-file .security-compose.env -p sailsight-security-compose -f docker-compose.yml up -d --build --wait
       - run: curl --fail --silent --retry 30 --retry-delay 2 --retry-all-errors http://localhost:8080/api/v1/auth/providers > /dev/null
