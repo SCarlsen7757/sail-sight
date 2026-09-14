@@ -1,6 +1,6 @@
 using SailSight.Api.Models.Entities;
-using Vakaros.Vkx.Parser;
-using Vakaros.Vkx.Parser.Models;
+using Vakaros.Vkx.Parser.NET;
+using Vakaros.Vkx.Parser.NET.Models;
 
 namespace SailSight.Api.Services;
 

@@ -3,8 +3,8 @@ using System.Security.Cryptography;
 using SailSight.Api.Data;
 using SailSight.Api.Helpers;
 using SailSight.Api.Models.Entities;
-using Vakaros.Vkx.Parser;
-using Vakaros.Vkx.Parser.Models;
+using Vakaros.Vkx.Parser.NET;
+using Vakaros.Vkx.Parser.NET.Models;
 
 namespace SailSight.Api.Services;
 
@@ -37,7 +37,9 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
     public async Task<Session> IngestAsync(Guid ownerUserId, Stream fileStream, string fileName, string contentHash, CancellationToken ct = default)
     {
         VkxIngestionValidator.Validate(fileStream, limits, ct);
-        var vkxSession = VkxParser.Parse(new CancellableReadStream(fileStream, ct));
+        var vkxSession = VkxParser.Parse(fileStream, ct);
+        // The validator rejects truncation up front; a partial session here means the two disagree.
+        if (vkxSession.IsPartial) throw new FormatException("Incomplete VKX data.");
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
         // Extract session-level metadata.
@@ -100,7 +102,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             {
                 var p = positions[i];
                 if (previous != null) race.SailedDistanceMeters += GeoHelper.HaversineMeters(previous.Latitude, previous.Longitude, p.Latitude, p.Longitude);
-                race.MaxSpeedOverGround = Math.Max(race.MaxSpeedOverGround, p.SpeedOverGround);
+                race.MaxSpeedOverGround = Math.Max(race.MaxSpeedOverGround, p.SpeedOverGroundMetresPerSecond);
                 previous = p;
                 cursor = i;
             }
@@ -118,6 +120,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
         }
     }
 
+    // Stored telemetry is SI (m, m/s, rad, °C); read the parser's SI properties, never the imperial ones.
     private async Task InsertTimeSeriesDataAsync(VkxSession vkxSession, Guid sessionId, CancellationToken ct)
     {
         // Positions (highest frequency — bulk insert)
@@ -127,9 +130,9 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             SessionId = sessionId,
             Latitude = p.Latitude,
             Longitude = p.Longitude,
-            SpeedOverGround = p.SpeedOverGround,
-            CourseOverGround = p.CourseOverGround,
-            Altitude = p.Altitude,
+            SpeedOverGround = p.SpeedOverGroundMetresPerSecond,
+            CourseOverGround = p.CourseOverGroundRadians,
+            Altitude = p.AltitudeMetres,
             QuaternionW = p.QuaternionW,
             QuaternionX = p.QuaternionX,
             QuaternionY = p.QuaternionY,
@@ -142,8 +145,8 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
         {
             Time = w.Timestamp,
             SessionId = sessionId,
-            WindDirection = w.WindDirection,
-            WindSpeed = w.WindSpeed,
+            WindDirection = w.WindDirectionRadians,
+            WindSpeed = w.WindSpeedMetresPerSecond,
         });
         await InsertBatchesAsync(windReadings, ct);
 
@@ -152,8 +155,8 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
         {
             Time = s.Timestamp,
             SessionId = sessionId,
-            ForwardSpeed = s.ForwardSpeed,
-            HorizontalSpeed = s.HorizontalSpeed,
+            ForwardSpeed = s.ForwardSpeedMetresPerSecond,
+            HorizontalSpeed = s.HorizontalSpeedMetresPerSecond,
         });
         await InsertBatchesAsync(speedReadings, ct);
 
@@ -162,7 +165,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
         {
             Time = d.Timestamp,
             SessionId = sessionId,
-            Depth = d.Depth,
+            Depth = d.DepthMetres,
         });
         await InsertBatchesAsync(depthReadings, ct);
 
@@ -171,7 +174,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
         {
             Time = t.Timestamp,
             SessionId = sessionId,
-            Temperature = t.Temperature,
+            Temperature = t.TemperatureCelsius,
         });
         await InsertBatchesAsync(tempReadings, ct);
 
@@ -190,7 +193,7 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
         {
             Time = d.Timestamp,
             SessionId = sessionId,
-            DeclinationOffset = d.DeclinationOffset,
+            DeclinationOffset = d.DeclinationOffsetRadians,
             Latitude = d.Latitude,
             Longitude = d.Longitude,
         });
@@ -224,8 +227,8 @@ public class VkxIngestionService(AppDbContext db, RaceDetectionService raceDetec
             SessionId = sessionId,
             IsPort = s.IsPort,
             IsManual = s.IsManual,
-            TrueHeading = s.TrueHeading,
-            SpeedOverGround = s.SpeedOverGround,
+            TrueHeading = s.TrueHeadingRadians,
+            SpeedOverGround = s.SpeedOverGroundMetresPerSecond,
         });
         await InsertBatchesAsync(shiftAngles, ct);
 

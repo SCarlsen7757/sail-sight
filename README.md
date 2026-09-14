@@ -75,8 +75,8 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
                                                                ▲
                                                                │
 ┌──────────────────────────┐      parse          ┌─────────────┴──────────────┐
-│  Vakaros.Vkx.Parser      │ ◄────────────────── │  VkxIngestionService       │
-│  Binary VKX decoder      │                     │  (inside the API)          │
+│  Vakaros.Vkx.Parser.NET  │ ◄────────────────── │  VkxIngestionService       │
+│  VKX decoder (NuGet)     │                     │  (inside the API)          │
 └──────────────────────────┘                     └────────────────────────────┘
 
 ┌──────────────────────────┐
@@ -222,10 +222,11 @@ Boats, marks, and courses can be managed via the REST API:
 
 | Project | Type | Purpose |
 | --- | --- | --- |
-| `Vakaros.Vkx.Parser` | Class library | Decodes the VKX binary format (v1.4) into typed C# records |
 | `SailSight.Api` | ASP.NET Core Web API | Ingestion, storage, race detection, REST endpoints |
 | `SailSight.Web` | Next.js 16 / React 19 / TypeScript | Interactive web UI — map, charts, gauges, playback |
 | `SailSight.Shared` | Class library | DTOs shared between the API and web projects |
+
+VKX files are decoded by the [Vakaros.Vkx.Parser.NET](https://github.com/SCarlsen7757/Vakaros.Vkx.Parser.NET) NuGet package, maintained in its own repository.
 
 ---
 

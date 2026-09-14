@@ -44,7 +44,8 @@
       "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": "1.23.0",
       "Npgsql.EntityFrameworkCore.PostgreSQL": "10.0.3",
       "FluentValidation.DependencyInjectionExtensions": "12.1.1",
-      "Scalar.AspNetCore": "2.17.3"
+      "Scalar.AspNetCore": "2.17.3",
+      "Vakaros.Vkx.Parser.NET": "0.2.0"
     },
     "SailSight.Api.Tests": {
       "Microsoft.EntityFrameworkCore.InMemory": "10.0.12",
@@ -53,8 +54,7 @@
       "xunit": "2.9.3",
       "xunit.runner.visualstudio": "4.0.0"
     },
-    "SailSight.Shared": {},
-    "Vakaros.Vkx.Parser": {}
+    "SailSight.Shared": {}
   },
   "Microsoft.OpenApi": [
     "Microsoft.OpenApi/2.12.0"

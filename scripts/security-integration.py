@@ -53,7 +53,7 @@ expect(owner.call('PATCH',f'/teams/{team}/members/{tid}',{'role':'999'}),400,'un
 expect(owner.call('PATCH',f'/teams/{team}/members/{oid}',{'role':'Member'}),409,'final team owner')
 
 def vkx(samples=10003):
- data=bytearray(b'\xff\x01'+bytes(6)+b'\x08'+bytes(12)+b'\x0a')
+ data=bytearray(b'\xff\x05'+bytes(6)+b'\x08'+bytes(12)+b'\x0a')
  for i in range(samples):
   time=1700000000000+i*100
   if i==10:data.extend(b'\x04'+struct.pack('<QBi',time,3,0))
