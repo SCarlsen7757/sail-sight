@@ -58,6 +58,18 @@ Browser-driven visual checks of charts, maps, forms/navigation and light/dark ap
 
 Disposable test containers were stopped after verification; database volumes were preserved. Raw local logs and scanner reports are retained in the ignored `.security-evidence/` directory. Temporary image archives were removed.
 
+## Dependabot automation
+
+[Dependabot configuration](../../.github/dependabot.yml) checks npm, NuGet, GitHub Actions and Docker every Monday at 09:00 Europe/Copenhagen. NuGet covers the API and test projects; Docker covers the API, both web Dockerfiles (including `Dockerfile.dev`), and the database image in `deployment/`.
+
+Each ecosystem groups minor and patch version updates into one PR and leaves majors and unmatched updates separate. Each has a limit of two open version-update PRs across its configured directories. PRs receive `chore`, `dependencies` and the corresponding `api`, `web` or `infra` scope label. Existing PRs may temporarily exceed the new limit; review them separately. Updates are not automatically merged.
+
+The TypeScript and ESLint major-version exclusions remain in place, and Microsoft.OpenApi remains resolved through its parent packages. Reconsider these compatibility exceptions under [issue #7](https://github.com/SCarlsen7757/sail-sight/issues/7), rather than bypassing peer or code-generation constraints.
+
+Dependabot alerts and automatic security updates are separate repository settings under **Settings > Advanced Security** and must be enabled on each repository or fork; the YAML alone does not enable them. Security updates are outside the configured version-update groups and routine PR limit. The existing scheduled advisory checks and container scans continue to provide coverage alongside Dependabot.
+
+After merging configuration changes to `main`, inspect the next Dependabot update jobs and resulting PRs to confirm manifest coverage, grouping and labels. Local builds validate the application, but cannot execute GitHub's hosted update scheduler.
+
 ## Follow-up work
 
 Recovery references in these issues point to reviewed commit `41d76bd`:

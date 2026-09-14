@@ -2,24 +2,68 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /SailSight.Web
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Europe/Copenhagen
+    open-pull-requests-limit: 2
+    labels: [chore, dependencies, web]
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: [minor, patch]
+    # Compatibility exceptions: https://github.com/SCarlsen7757/sail-sight/issues/7
     ignore:
       - dependency-name: typescript
         update-types: [version-update:semver-major]
       - dependency-name: eslint
         update-types: [version-update:semver-major]
   - package-ecosystem: nuget
-    directory: /
-    schedule: { interval: weekly }
+    directories:
+      - /SailSight.Api
+      - /SailSight.Api.Tests
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Europe/Copenhagen
+    open-pull-requests-limit: 2
+    labels: [chore, dependencies, api]
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: [minor, patch]
   - package-ecosystem: github-actions
     directory: /
-    schedule: { interval: weekly }
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Europe/Copenhagen
+    open-pull-requests-limit: 2
+    labels: [chore, dependencies, infra]
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: [minor, patch]
   - package-ecosystem: docker
-    directory: /SailSight.Api
-    schedule: { interval: weekly }
-  - package-ecosystem: docker
-    directory: /SailSight.Web
-    schedule: { interval: weekly }
-  - package-ecosystem: docker
-    directory: /deployment
-    schedule: { interval: weekly }
+    directories:
+      - /SailSight.Api
+      - /SailSight.Web
+      - /deployment
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Europe/Copenhagen
+    open-pull-requests-limit: 2
+    labels: [chore, dependencies, infra]
+    groups:
+      minor-and-patch:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: [minor, patch]
