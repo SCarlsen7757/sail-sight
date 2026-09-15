@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NAV_ITEMS, isActive, type NavItem } from "./nav-items";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { ChevronLeft, ChevronRight, Ellipsis, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ThemeToggle } from "./theme-toggle";
 import { useAuth } from "@/lib/auth-context";
@@ -176,38 +177,90 @@ export function IconRail() {
   );
 }
 
+/** Most tabs that fit a phone-width bar; beyond this the last slot becomes a "More" menu. */
+const MAX_TABS = 6;
+
+const tabClassName = (active: boolean) =>
+  cn(
+    "flex w-full flex-col items-center justify-center gap-0.5 py-2 text-[10px]",
+    active ? "text-action-primary" : "text-text-secondary"
+  );
+
+function TabIcon({ icon: Icon, badge }: { icon: LucideIcon; badge: number }) {
+  return (
+    <span className="relative">
+      <Icon className="h-5 w-5" />
+      {badge > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
+          {badge > 9 ? "9+" : badge}
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function BottomTabBar() {
   const pathname = usePathname();
   const items = useVisibleNavItems();
   const badges = useNotificationCounts();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const tabs = items.length <= MAX_TABS ? items : items.slice(0, MAX_TABS - 1);
+  const overflow = items.slice(tabs.length);
+  const overflowActive = overflow.some((item) => isActive(pathname, item));
+  const overflowBadge = overflow.reduce((sum, item) => sum + badgeForItem(item, badges), 0);
+
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border-default bg-bg-surface">
-      <ul className={cn("grid", items.length <= 8 ? "grid-cols-8" : "grid-cols-9")}>
-        {items.map((item) => {
-          const active = isActive(pathname, item);
-          const badge = badgeForItem(item, badges);
-          return (
-            <li key={item.href} className="relative">
-              <Link
-                href={item.href}
-                className={cn(
-                  "flex flex-col items-center justify-center gap-0.5 py-2 text-[10px]",
-                  active ? "text-action-primary" : "text-text-secondary"
-                )}
-              >
-                <span className="relative">
-                  <item.icon className="h-5 w-5" />
-                  {badge > 0 && (
-                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
-                      {badge > 9 ? "9+" : badge}
-                    </span>
-                  )}
-                </span>
-                <span>{item.label}</span>
-              </Link>
-            </li>
-          );
-        })}
+      <ul className="grid grid-flow-col auto-cols-fr">
+        {tabs.map((item) => (
+          <li key={item.href}>
+            <Link href={item.href} className={tabClassName(isActive(pathname, item))}>
+              <TabIcon icon={item.icon} badge={badgeForItem(item, badges)} />
+              <span>{item.label}</span>
+            </Link>
+          </li>
+        ))}
+        {overflow.length > 0 && (
+          <li>
+            <Popover.Root open={moreOpen} onOpenChange={setMoreOpen}>
+              <Popover.Trigger className={tabClassName(overflowActive || moreOpen)}>
+                <TabIcon icon={Ellipsis} badge={overflowBadge} />
+                <span>More</span>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content
+                  side="top"
+                  align="end"
+                  sideOffset={8}
+                  collisionPadding={8}
+                  className="z-40 w-48 rounded-md border border-border-default bg-bg-surface p-1 shadow-lg"
+                >
+                  <ul className="space-y-1">
+                    {overflow.map((item) => (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setMoreOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition",
+                            isActive(pathname, item)
+                              ? "bg-action-primary/10 text-action-primary"
+                              : "text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
+                          )}
+                        >
+                          <item.icon className="h-5 w-5 shrink-0" />
+                          <span>{item.label}</span>
+                          <BadgeDot count={badgeForItem(item, badges)} />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
+          </li>
+        )}
       </ul>
     </nav>
   );
