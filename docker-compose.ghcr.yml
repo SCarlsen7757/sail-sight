@@ -42,6 +42,8 @@ services:
       Auth__Admin__Password: ${AUTH_ADMIN_PASSWORD:-}
       Web__PublicBaseUrl: ${PUBLIC_BASE_URL:?set HTTPS PUBLIC_BASE_URL}
       TrustedProxies__0: 172.30.89.3
+      Ingestion__UploadsPerHour: ${INGESTION_UPLOADS_PER_HOUR:-20}
+      RateLimits__LoginPerMinute: ${LOGIN_RATE_LIMIT_PER_MINUTE:-5}
       Auth__KeyCertificatePath: /run/secrets/auth-keys.pfx
       Auth__KeyCertificatePassword: ${AUTH_KEY_CERTIFICATE_PASSWORD:?set certificate password}
 

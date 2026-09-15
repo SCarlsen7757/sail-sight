@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using SailSight.Api.Auth;
 using SailSight.Api.Controllers;
@@ -89,6 +90,21 @@ public class SecurityTests
         using var second = gate.TryEnter(Guid.NewGuid()); Assert.NotNull(second); Assert.Null(gate.TryEnter(Guid.NewGuid()));
         first.Dispose(); using var again = gate.TryEnter(a); Assert.NotNull(again);
     }
+
+    private static IConfiguration Config(params (string Key, string Value)[] values) =>
+        new ConfigurationBuilder().AddInMemoryCollection(values.Select(v => KeyValuePair.Create(v.Key, (string?)v.Value))).Build();
+
+    [Fact]
+    public void RateLimitsDefaultToProductionValues()
+    {
+        var limits = RateLimitOptions.Load(Config());
+        Assert.Equal(5, limits.LoginPerMinute); Assert.Equal(5, limits.InvitationPerMinute);
+    }
+
+    [Fact] public void RateLimitsBindFromConfiguration() => Assert.Equal(100, RateLimitOptions.Load(Config(("RateLimits:LoginPerMinute", "100"))).LoginPerMinute);
+
+    [Theory] [InlineData("RateLimits:LoginPerMinute")] [InlineData("RateLimits:InvitationPerMinute")]
+    public void RateLimitsMustBePositive(string key) => Assert.Throws<InvalidOperationException>(() => RateLimitOptions.Load(Config((key, "0"))));
 
     private static MemoryStream File(bool duplicate = false, float speed = 1, int latitude = 550000000, byte version = VkxFormatVersion.V1_4)
     {

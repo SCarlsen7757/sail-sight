@@ -180,13 +180,14 @@ builder.Services.AddCors(opts =>
 });
 
 // Rate limiting
+var rateLimits = RateLimitOptions.Load(builder.Configuration);
 builder.Services.AddRateLimiter(opts =>
 {
     opts.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    foreach (var policy in new[] { "login", "invitation" })
+    foreach (var (policy, limit) in new[] { ("login", rateLimits.LoginPerMinute), ("invitation", rateLimits.InvitationPerMinute) })
         opts.AddPolicy(policy, context => RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
-            { PermitLimit = 5, Window = TimeSpan.FromMinutes(1) }));
+            { PermitLimit = limit, Window = TimeSpan.FromMinutes(1) }));
     opts.AddPolicy("upload", context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = ingestionLimits.UploadsPerHour, Window = TimeSpan.FromHours(1) }));
