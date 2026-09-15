@@ -84,6 +84,7 @@ export default function UploadPage() {
             ref={inputRef}
             type="file"
             accept=".vkx"
+            aria-label="VKX file"
             className="hidden"
             onChange={(e) => handleFiles(e.target.files)}
           />
