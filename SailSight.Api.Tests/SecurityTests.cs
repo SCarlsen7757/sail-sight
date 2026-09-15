@@ -17,7 +17,7 @@ namespace SailSight.Api.Tests;
 
 public class SecurityTests
 {
-    private sealed record User(Guid UserId, bool IsAuthenticated = true) : ICurrentUser { public string? Email => null; }
+    private sealed record User(Guid UserId, bool IsAuthenticated = true) : ICurrentUser { public string? Email => null; public Guid? LoginSessionId => null; }
 
     [Theory]
     [InlineData("Owner", true)] [InlineData("admin", true)] [InlineData("Member", true)]
@@ -89,6 +89,26 @@ public class SecurityTests
         var first = gate.TryEnter(a); Assert.NotNull(first); Assert.Null(gate.TryEnter(a));
         using var second = gate.TryEnter(Guid.NewGuid()); Assert.NotNull(second); Assert.Null(gate.TryEnter(Guid.NewGuid()));
         first.Dispose(); using var again = gate.TryEnter(a); Assert.NotNull(again);
+    }
+
+    [Theory]
+    [InlineData("active", true)] [InlineData("other-user", false)] [InlineData("expired", false)] [InlineData("missing", false)]
+    public async Task LoginSessionMustExistForItsUser(string state, bool active)
+    {
+        await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var owner = Guid.NewGuid();
+        var session = new LoginSession { UserId = owner, ExpiresAt = DateTimeOffset.UtcNow.AddDays(state == "expired" ? -1 : 1) };
+        if (state != "missing") { db.LoginSessions.Add(session); await db.SaveChangesAsync(); }
+        var user = state == "other-user" ? Guid.NewGuid() : owner;
+        Assert.Equal(active, await new LoginSessionStore(db, new AuthOptions()).IsActiveAsync(session.Id, user));
+    }
+
+    [Fact]
+    public void LoginSessionIdComesFromTheClaim()
+    {
+        var id = Guid.NewGuid();
+        Assert.Equal(id, LoginSessionStore.IdOf(new ClaimsPrincipal(new ClaimsIdentity([new Claim(AuthConstants.LoginSessionClaim, id.ToString())], "cookie"))));
+        Assert.Null(LoginSessionStore.IdOf(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, id.ToString())], "cookie"))));
     }
 
     private static IConfiguration Config(params (string Key, string Value)[] values) =>

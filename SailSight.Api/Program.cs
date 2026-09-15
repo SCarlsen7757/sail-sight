@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Claims;
 using Microsoft.AspNetCore.HttpOverrides;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Authentication;
@@ -110,7 +111,18 @@ if (!authOptions.IsSingleUser)
         .AddEntityFrameworkStores<AppDbContext>()
         .AddDefaultTokenProviders();
 
-    builder.Services.Configure<SecurityStampValidatorOptions>(o => o.ValidationInterval = TimeSpan.Zero);
+    builder.Services.Configure<SecurityStampValidatorOptions>(o =>
+    {
+        o.ValidationInterval = TimeSpan.Zero;
+        // The refreshed principal is rebuilt from the user record; keep the login session it belongs to.
+        o.OnRefreshingPrincipal = ctx =>
+        {
+            var sid = ctx.CurrentPrincipal?.FindFirst(AuthConstants.LoginSessionClaim);
+            if (sid is not null && ctx.NewPrincipal?.Identity is ClaimsIdentity identity)
+                identity.AddClaim(new Claim(sid.Type, sid.Value));
+            return Task.CompletedTask;
+        };
+    });
     builder.Services.ConfigureApplicationCookie(opts =>
     {
         opts.Cookie.Name = authOptions.Cookie.Name;
@@ -119,6 +131,36 @@ if (!authOptions.IsSingleUser)
         opts.Cookie.SecurePolicy = localProfile ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
         opts.ExpireTimeSpan = TimeSpan.FromDays(authOptions.Cookie.SlidingExpirationDays);
         opts.SlidingExpiration = true;
+        opts.Events.OnSigningIn = async ctx =>
+        {
+            if (ctx.Principal?.Identity is not ClaimsIdentity identity ||
+                !Guid.TryParse(identity.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+                return;
+            var sid = await ctx.HttpContext.RequestServices.GetRequiredService<LoginSessionStore>().CreateAsync(userId);
+            identity.AddClaim(new Claim(AuthConstants.LoginSessionClaim, sid.ToString()));
+        };
+        opts.Events.OnValidatePrincipal = async ctx =>
+        {
+            var sid = LoginSessionStore.IdOf(ctx.Principal);
+            var sessions = ctx.HttpContext.RequestServices.GetRequiredService<LoginSessionStore>();
+            if (sid is null || !Guid.TryParse(ctx.Principal!.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId) ||
+                !await sessions.IsActiveAsync(sid.Value, userId))
+            {
+                ctx.RejectPrincipal();
+                await ctx.HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                return;
+            }
+            await SecurityStampValidator.ValidatePrincipalAsync(ctx);
+            // The validator asks for a new cookie on every successful check. Renewing on every response lets a
+            // request still in flight during logout put the cookie back, so leave renewal to sliding expiration
+            // (the cookie handler requests that itself before this event runs).
+            ctx.ShouldRenew = false;
+        };
+        opts.Events.OnCheckSlidingExpiration = async ctx =>
+        {
+            if (ctx.ShouldRenew && LoginSessionStore.IdOf(ctx.Principal) is { } sid)
+                await ctx.HttpContext.RequestServices.GetRequiredService<LoginSessionStore>().ExtendAsync(sid);
+        };
         opts.Events.OnRedirectToLogin = ctx =>
         {
             ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -143,6 +185,7 @@ builder.Services.AddAuthorization();
 
 // ── App services ─────────────────────────────────────────────────────────
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+builder.Services.AddScoped<LoginSessionStore>();
 builder.Services.AddScoped<SessionAuthorizer>();
 builder.Services.AddScoped<IAuthorizationHandler, SessionAccessHandler>();
 builder.Services.AddScoped<IAuditService, AuditService>();
@@ -189,7 +232,7 @@ builder.Services.AddRateLimiter(opts =>
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
             { PermitLimit = limit, Window = TimeSpan.FromMinutes(1) }));
     opts.AddPolicy("upload", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
+        context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = ingestionLimits.UploadsPerHour, Window = TimeSpan.FromHours(1) }));
 });
 

@@ -26,6 +26,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<TeamMember> TeamMembers => Set<TeamMember>();
     public DbSet<TeamInvite> TeamInvites => Set<TeamInvite>();
     public DbSet<Invitation> Invitations => Set<Invitation>();
+    public DbSet<LoginSession> LoginSessions => Set<LoginSession>();
     public DbSet<SessionShare> SessionShares => Set<SessionShare>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<BoatClassRequest> BoatClassRequests => Set<BoatClassRequest>();
@@ -64,6 +65,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.Entity<IdentityUserLogin<Guid>>(e => e.ToTable("user_logins"));
         modelBuilder.Entity<IdentityUserToken<Guid>>(e => e.ToTable("user_tokens"));
         modelBuilder.Entity<IdentityRoleClaim<Guid>>(e => e.ToTable("role_claims"));
+
+        modelBuilder.Entity<LoginSession>(e =>
+        {
+            e.ToTable("login_sessions");
+            e.HasKey(s => s.Id);
+            e.Property(s => s.Id).HasColumnName("id").ValueGeneratedNever();
+            e.Property(s => s.UserId).HasColumnName("user_id");
+            e.Property(s => s.CreatedAt).HasColumnName("created_at");
+            e.Property(s => s.ExpiresAt).HasColumnName("expires_at");
+            e.HasOne<AppUser>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(s => s.UserId);
+        });
 
         // ── Boat Classes ─────────────────────────────────────────────────────
         modelBuilder.Entity<BoatClass>(e =>

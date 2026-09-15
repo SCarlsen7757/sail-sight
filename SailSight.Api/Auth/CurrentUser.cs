@@ -7,6 +7,7 @@ public interface ICurrentUser
     Guid UserId { get; }
     string? Email { get; }
     bool IsAuthenticated { get; }
+    Guid? LoginSessionId { get; }
 }
 
 public sealed class CurrentUser(IHttpContextAccessor accessor, AuthOptions auth) : ICurrentUser
@@ -27,4 +28,6 @@ public sealed class CurrentUser(IHttpContextAccessor accessor, AuthOptions auth)
 
     public bool IsAuthenticated => auth.IsSingleUser
         || accessor.HttpContext?.User?.Identity?.IsAuthenticated == true;
+
+    public Guid? LoginSessionId => auth.IsSingleUser ? null : LoginSessionStore.IdOf(accessor.HttpContext?.User);
 }

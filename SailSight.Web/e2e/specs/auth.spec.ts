@@ -22,11 +22,15 @@ test.describe("authentication", () => {
 
     await page.goto("/account");
     await expect(page.getByText(user.email)).toBeVisible();
+    const signedInCookies = await page.context().cookies();
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/login$/);
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-    // Server-side state is not asserted here: a request in flight during logout (e.g. the notification
-    // stream) can currently re-issue the auth cookie, so that check would be flaky (#25).
+    expect((await page.request.get("/api/v1/me")).status()).toBe(401);
+
+    // A response that was in flight during logout can still hand the old cookie back (#25); it must stay revoked.
+    await page.context().addCookies(signedInCookies);
+    expect((await page.request.get("/api/v1/me")).status()).toBe(401);
   });
 
   test("signed-in pages send anonymous visitors to public sessions", async ({ page }) => {
