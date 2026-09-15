@@ -64,6 +64,7 @@ export function PlaybackControls({ raceStartOffset, duration }: { raceStartOffse
           </button>
           <select
             value={speed}
+            aria-label="Playback speed"
             onChange={(e) => setSpeed(Number(e.target.value) as 0.5 | 1 | 2 | 4 | 8 | 16 | 32)}
             className="rounded border border-border-default bg-bg-base px-2 py-1 text-sm"
           >
@@ -85,6 +86,7 @@ export function PlaybackControls({ raceStartOffset, duration }: { raceStartOffse
         min={0}
         max={duration}
         step={0.1}
+        aria-label="Playback position"
         value={position}
         onChange={(e) => setPosition(Number(e.target.value))}
         className="w-full accent-[color:var(--action-primary)]"

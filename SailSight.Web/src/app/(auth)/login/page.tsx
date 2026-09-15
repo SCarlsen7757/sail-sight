@@ -47,9 +47,10 @@ function LoginForm() {
       {providers?.local && (
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-white/50">Email Address</label>
+            <label htmlFor="login-email" className="text-xs font-semibold uppercase tracking-wider text-white/50">Email Address</label>
             <input 
               className="w-full rounded-lg border border-white/10 bg-white/[0.02] p-3 text-white placeholder-white/20 focus:border-action-primary focus:outline-none focus:ring-1 focus:ring-action-primary transition-all" 
+              id="login-email"
               type="email" 
               placeholder="email@example.com" 
               value={email} 
@@ -59,9 +60,10 @@ function LoginForm() {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-white/50">Password</label>
+            <label htmlFor="login-password" className="text-xs font-semibold uppercase tracking-wider text-white/50">Password</label>
             <input 
               className="w-full rounded-lg border border-white/10 bg-white/[0.02] p-3 text-white placeholder-white/20 focus:border-action-primary focus:outline-none focus:ring-1 focus:ring-action-primary transition-all" 
+              id="login-password"
               type="password" 
               placeholder="••••••••" 
               value={password} 

@@ -10,5 +10,7 @@ export default defineConfig([
     "@typescript-eslint/no-explicit-any": "warn",
     "react-hooks/set-state-in-effect": "warn",
   } },
-  globalIgnores([".next/**", "out/**", "next-env.d.ts", "src/lib/api-types.ts"]),
+  // Playwright fixtures call a `use` callback that is not a React hook.
+  { files: ["e2e/**"], rules: { "react-hooks/rules-of-hooks": "off" } },
+  globalIgnores([".next/**", "out/**", "next-env.d.ts", "src/lib/api-types.ts", "playwright-report/**", "test-results/**"]),
 ]);

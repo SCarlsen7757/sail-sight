@@ -40,3 +40,55 @@ jobs:
     uses: ./.github/workflows/_docker-web.yml
     with:
       push: false
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: SailSight.Web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "26.8.2"
+          cache: npm
+          cache-dependency-path: SailSight.Web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start stack
+        run: npm run e2e:up
+
+      - name: Seed data
+        run: npm run seed
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            SailSight.Web/playwright-report/
+            SailSight.Web/test-results/
+          retention-days: 14
+
+      - name: Container logs
+        if: failure()
+        run: docker compose --env-file .e2e-compose.env -p sailsight-e2e -f docker-compose.yml logs --no-color --tail 200 migrate api web
+        working-directory: .
+
+      - name: Stop stack
+        if: always()
+        run: npm run e2e:down

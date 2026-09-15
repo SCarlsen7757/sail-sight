@@ -1,11 +1,25 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "types": ["node"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "types": [
+      "node"
+    ],
     "incremental": false,
     "plugins": []
   },
-  "include": ["**/*.ts", "../src/lib/api-types.ts", "../src/lib/browser-request.ts"],
-  "exclude": [".auth", ".seed"]
+  "include": [
+    "**/*.ts",
+    "../src/lib/api-types.ts",
+    "../src/lib/browser-request.ts",
+    "../playwright.config.ts"
+  ],
+  "exclude": [
+    ".auth",
+    ".seed"
+  ]
 }
