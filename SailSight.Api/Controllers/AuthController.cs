@@ -23,7 +23,9 @@ public class AuthController(
     SignInManager<AppUser> signInManager,
     IAuditService audit,
     AuthOptions authOptions,
-    IOptions<WebOptions> webOptions) : ControllerBase
+    IOptions<WebOptions> webOptions,
+    ICurrentUser currentUser,
+    LoginSessionStore loginSessions) : ControllerBase
 {
     [HttpPost("login")]
     [AllowAnonymous]
@@ -34,8 +36,11 @@ public class AuthController(
 
         // If a session is already active (e.g. stale cookie from a previous user),
         // sign it out first so Identity starts from a clean state.
-        if (User.Identity?.IsAuthenticated == true)
+        if (currentUser.IsAuthenticated)
+        {
+            await loginSessions.RevokeAsync(currentUser.LoginSessionId, currentUser.UserId);
             await signInManager.SignOutAsync();
+        }
 
         var user = await userManager.FindByEmailAsync(req.Email);
         if (user is null) return Unauthorized();
@@ -59,6 +64,8 @@ public class AuthController(
     [Authorize]
     public async Task<IActionResult> Logout()
     {
+        // Revoke server-side too: deleting the cookie alone is undone by any response still in flight.
+        await loginSessions.RevokeAsync(currentUser.LoginSessionId, currentUser.UserId);
         await signInManager.SignOutAsync();
         await audit.LogAsync("auth.logout");
         return NoContent();

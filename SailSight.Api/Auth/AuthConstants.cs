@@ -15,6 +15,9 @@ public static class AuthConstants
     public const string CsrfHeaderName = "X-CSRF-Token";
     public const string CsrfCookieName = "sailsight.csrf";
 
+    /// <summary>Auth cookie claim holding the <see cref="Models.Entities.LoginSession"/> id.</summary>
+    public const string LoginSessionClaim = "sailsight:sid";
+
     public const string AdminRole = "Admin";
     public const string UserRole = "User";
 }

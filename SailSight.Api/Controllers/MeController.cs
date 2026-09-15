@@ -25,7 +25,8 @@ public class MeController(
     ICurrentUser currentUser,
     IAuditService audit,
     AuthOptions authOptions,
-    NotificationBus notificationBus) : ControllerBase
+    NotificationBus notificationBus,
+    LoginSessionStore loginSessions) : ControllerBase
 {
     private UserManager<AppUser> userManager => services.GetRequiredService<UserManager<AppUser>>();
 
@@ -225,7 +226,9 @@ public class MeController(
         {
             var user = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == userId, ct);
             var stamp = User.FindFirst("AspNet.Identity.SecurityStamp")?.Value;
-            if (user == null || user.SecurityStamp != stamp) throw new OperationCanceledException();
+            if (user == null || user.SecurityStamp != stamp || currentUser.LoginSessionId is not { } sid ||
+                !await loginSessions.IsActiveAsync(sid, userId, ct))
+                throw new OperationCanceledException();
             isAdmin = await userManager.IsInRoleAsync(user, AuthConstants.AdminRole);
         }
         int pendingInvites;

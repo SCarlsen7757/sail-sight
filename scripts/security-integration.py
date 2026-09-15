@@ -149,6 +149,20 @@ expect(admin.call('DELETE',f'/admin/users/{formerId}'),204,'delete former creato
 expect(former.call('GET','/me'),401,'deleted account cookie revoked')
 expect(teammate.call('GET',f'/teams/{transferred}'),200,'team survives creator deletion')
 
+# Logout revokes only this device's login, and a cookie handed back by a request in flight stays revoked.
+device1,_=account()
+email=expect(device1.call('GET','/me'),200,'first device profile')['email']
+device2=Client();device2.call('GET','/auth/providers')
+expect(device2.call('POST','/auth/login',{'email':email,'password':PASSWORD}),200,'second device login')
+profile=device1.call('GET','/me');expect(profile,200,'profile without renewal')
+assert not any(c.startswith('vkx.auth=') for c in profile[2].get_all('Set-Cookie') or []);checks+=1
+replay=Client()
+for c in device1.jar:replay.jar.set_cookie(c)
+expect(device1.call('POST','/auth/logout'),204,'first device logout')
+expect(device1.call('GET','/me'),401,'first device signed out')
+expect(replay.call('GET','/me'),401,'replayed cookie revoked')
+expect(device2.call('GET','/me'),200,'second device still signed in')
+
 # A notification stream must revalidate before sending another update.
 streamUser,streamUid=account()
 stream=streamUser.opener.open(urllib.request.Request(BASE+'/me/notifications/stream'),timeout=35)

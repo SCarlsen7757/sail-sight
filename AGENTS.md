@@ -96,6 +96,7 @@ Races are detected from `RaceTimerEvent` records embedded in the VKX file (event
 
 - **URL-segment versioning**: all routes are prefixed `/api/v{version}/...` (currently `v1`). Controllers use `[ApiVersion("1.0")]` and `[Route("api/v{version:apiVersion}/...")]`.
 - **Authentication modes**: configured via `Auth__Mode` in env/config. `MultiUser` (default) uses ASP.NET Identity + cookie auth + optional PAT tokens (prefix `vkx_`). `SingleUser` skips Identity entirely and uses a synthetic system user (`AuthConstants.SystemUserId`).
+- **Login sessions**: in `MultiUser` mode each sign-in creates a `login_sessions` row (`LoginSessionStore`) whose id travels in the auth cookie. A cookie is only accepted while its row exists, so logout revokes that device alone; changing the security stamp still revokes every device. The cookie is renewed only by sliding expiration, never on every response.
 - **CSRF**: `CsrfMiddleware` requires the `X-CSRF-Token` header (value from the `sailsight.csrf` cookie) on all mutating requests in `MultiUser` mode.
 - **Session visibility**: controlled by `SessionAuthorizer` / `SessionAccessHandler`. A session is visible if the user is the owner, the session is public (`IsPublic = true`), or it is shared to a team the user belongs to.
 - **`ICurrentUser`**: always inject this service in controllers to get the current `UserId`; never read `HttpContext.User` directly.
