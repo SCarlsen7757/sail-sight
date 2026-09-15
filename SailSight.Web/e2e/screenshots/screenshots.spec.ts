@@ -36,6 +36,21 @@ async function tilesLoaded(page: Page) {
   }, undefined, { timeout: 30_000 });
 }
 
+/**
+ * Grows the viewport to the whole document. Playwright's fullPage capture keeps fixed elements (the mobile
+ * tab bar) at their position in the original viewport, which leaves them floating mid-image.
+ */
+async function expandViewportToContent(page: Page) {
+  const { width } = page.viewportSize()!;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    if (height === page.viewportSize()!.height) break;
+    await page.setViewportSize({ width, height });
+    await page.waitForLoadState("networkidle");
+  }
+  if (await page.locator(".leaflet-container").count()) await tilesLoaded(page);
+}
+
 /** Moves playback part-way through the race and shows the gauges. */
 async function midRace(page: Page) {
   await expect(page.getByRole("heading", { name: "Race 1" })).toBeVisible();
@@ -90,10 +105,10 @@ for (const theme of themes) {
           // The login background is an animated, randomised canvas.
           if (shot.name === "login") await page.addStyleTag({ content: "canvas.pointer-events-none { visibility: hidden !important; }" });
           await page.waitForLoadState("networkidle");
+          if (shot.fullPage) await expandViewportToContent(page);
 
           await page.screenshot({
             path: path.join(outputDir, theme, viewportName, `${shot.name}.png`),
-            fullPage: shot.fullPage ?? false,
             animations: "disabled",
             caret: "hide",
           });
