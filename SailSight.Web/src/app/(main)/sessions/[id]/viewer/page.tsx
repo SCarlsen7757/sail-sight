@@ -16,31 +16,20 @@ const TelemetryPanels = dynamic(() => import("@/components/charts/telemetry-pane
 });
 import { TimeWindowSlicer } from "@/components/charts/time-window-slicer";
 import { PlaybackControls } from "@/components/race-viewer/playback-controls";
-import { CompassRose, Inclinometer, NumericGauge, HeelTrimCard } from "@/components/gauges/gauges";
+import { InstrumentPanel } from "@/components/gauges/instrument-panel";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import type { SessionDetail, NormalizedPosition, Boat } from "@/lib/schemas";
 import { n } from "@/lib/schemas";
-import { useUnitPrefs } from "@/store/settings";
-import { convertSpeed, radiansToDegrees, speedUnitLabel } from "@/lib/units";
 import { useRaceViewerStore } from "@/store/race-viewer";
 import { normalizePositions } from "@/lib/normalization";
 import { usePlaybackState } from "@/hooks/use-playback-state";
 
 interface PageProps { params: Promise<{ id: string }>; }
 
-function quatToHeelTrim(w: number, x: number, y: number, z: number) {
-  const sinr_cosp = 2 * (w * x + y * z);
-  const cosr_cosp = 1 - 2 * (x * x + y * y);
-  const roll = Math.atan2(sinr_cosp, cosr_cosp);
-  const sinp = 2 * (w * y - z * x);
-  const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
-  return { heel: radiansToDegrees(roll), trim: radiansToDegrees(pitch) };
-}
-
 export default function SessionViewerPage({ params }: PageProps) {
   const { id } = use(params);
-  const { prefs } = useUnitPrefs();
+  const [showHeading, setShowHeading] = useState(false);
   const showGauges = useRaceViewerStore((s) => s.showGauges);
   const showCharts = useRaceViewerStore((s) => s.showCharts);
   const windowStart = useRaceViewerStore((s) => s.windowStart);
@@ -77,7 +66,6 @@ export default function SessionViewerPage({ params }: PageProps) {
   const duration = (endMs - startMs) / 1000;
 
   const { currentPos, playbackArrow } = usePlaybackState(positions, startMs);
-  const heelTrim = currentPos ? quatToHeelTrim(currentPos.qW, currentPos.qX, currentPos.qY, currentPos.qZ) : null;
 
   const windowStartMs = startMs + windowStart * 1000;
   const windowEndMs = startMs + windowEnd * 1000;
@@ -133,27 +121,20 @@ export default function SessionViewerPage({ params }: PageProps) {
       {/* Two-column body */}
       <div className="flex flex-col gap-4 flex-1 min-h-0 lg:flex-row">
         {/* Left column: playback controls + map */}
-        <div className="flex flex-col gap-3 lg:w-[42%] lg:shrink-0 min-h-0">
+        <div className={`flex flex-col gap-3 lg:shrink-0 min-h-0 ${showCharts ? "lg:w-[42%]" : "lg:flex-1"}`}>
           <PlaybackControls raceStartOffset={0} duration={Math.max(duration, 0)} />
           <RaceMap race={null} positions={positions} playbackPosition={playbackArrow} windowPositions={windowPositions} fill />
         </div>
 
         {/* Right column: scrollable detail panel */}
-        <div className="flex flex-col gap-4 flex-1 min-h-0 lg:overflow-y-auto">
-          {showGauges && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <NumericGauge label="SOG" value={currentPos ? convertSpeed(currentPos.sog, prefs.boatSpeed) : null} unit={speedUnitLabel(prefs.boatSpeed)} big />
-              <CompassRose headingDeg={currentPos ? radiansToDegrees(currentPos.cog) : null} />
-              <Inclinometer label="Heel (°)" value={heelTrim?.heel ?? null} range={45} />
-              <Inclinometer label="Trim (°)" value={heelTrim?.trim ?? null} range={10} />
-            </div>
-          )}
+        <div className={`@container flex flex-col gap-4 min-h-0 ${showCharts ? "flex-1 lg:overflow-y-auto" : "lg:w-48 lg:shrink-0 lg:overflow-y-auto"}`}>
+          {showGauges && <InstrumentPanel position={currentPos} compact={!showCharts} />}
 
           {showCharts && session.races.length > 0 && (
             <>
               <TimeWindowSlicer raceStartOffset={0} />
               <div className="flex flex-col gap-4">
-                <TelemetryPanels raceId={String(session.races[0].id)} raceStartMs={startMs} raceStartOffset={0} telemetryRateHz={n(session.telemetryRateHz)} />
+                <TelemetryPanels showHeading={showHeading} onShowHeadingChange={setShowHeading} raceId={String(session.races[0].id)} raceStartMs={startMs} raceStartOffset={0} telemetryRateHz={n(session.telemetryRateHz)} />
               </div>
             </>
           )}

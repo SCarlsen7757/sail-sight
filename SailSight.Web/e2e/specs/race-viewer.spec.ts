@@ -34,7 +34,8 @@ test.describe("race viewer", () => {
 
     await expect(page.getByText("SOG", { exact: true })).toBeVisible();
     await expect(page.getByText("Heading", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^\d+°$/)).toBeVisible();
+    await expect(page.getByLabel("Heading reading", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("COG reading", { exact: true })).toBeVisible();
   });
 
   test("shows charts and can hide them", async ({ page }) => {
