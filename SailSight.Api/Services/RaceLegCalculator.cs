@@ -200,7 +200,14 @@ public static class RaceLegCalculator
             var a = points[i - 1]; var b = points[i]; var dt = (b.Time - a.Time).TotalSeconds;
             distance += GeoHelper.HaversineMeters(a.Latitude, a.Longitude, b.Latitude, b.Longitude);
             speed += (a.SpeedOverGround + b.SpeedOverGround) * 0.5 * dt;
-            vmg += (Vmg(a, result.TargetLatitude, result.TargetLongitude) + Vmg(b, result.TargetLatitude, result.TargetLongitude)) * 0.5 * dt;
+            var vmgA = Vmg(a, result.TargetLatitude, result.TargetLongitude);
+            // Bearing is undefined at the midpoint itself. Use the incoming bearing's limit,
+            // while retaining the endpoint's measured speed and COG.
+            var coincident = GeoHelper.HaversineMeters(b.Latitude, b.Longitude, result.TargetLatitude, result.TargetLongitude) < 0.001;
+            var vmgB = coincident
+                ? b.SpeedOverGround * Math.Cos(GeoHelper.ToRadians(GeoHelper.Bearing(a.Latitude, a.Longitude, result.TargetLatitude, result.TargetLongitude)) - b.CourseOverGround)
+                : Vmg(b, result.TargetLatitude, result.TargetLongitude);
+            vmg += (vmgA + vmgB) * 0.5 * dt;
         }
         var duration = (points[^1].Time - points[0].Time).TotalSeconds;
         result.SailedDistanceMeters = distance;

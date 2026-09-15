@@ -11,6 +11,7 @@ test('analysis persists, recalculates, authorizes, and clears against PostgreSQL
     const legs = await scenario.legs();
     expect(legs.map((l: { status: string }) => l.status)).toEqual(['Completed', 'Completed']);
     expect(Number(legs[0].averageSpeedOverGround)).toBeCloseTo(1);
+    expect(Number(legs[0].averageVelocityMadeGood)).toBeCloseTo(1, 3);
     expect(Number(legs[0].sailedDistanceMeters)).toBeCloseTo(20, 1);
     expect(Number(legs[1].sailedDistanceMeters)).toBeCloseTo(20, 1);
     const url = (await api.get(`/api/v1/performance/legs?raceId=${scenario.raceId}`)).url();

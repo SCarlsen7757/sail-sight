@@ -99,6 +99,7 @@ public class RaceCalculationTests
     {
         var result = Assert.Single(Analyze([P(-20, 0, 0, 2, Math.PI / 2), P(-15, 0, 1, 4, Math.PI / 2), P(0, 0, 10, 4, Math.PI / 2), P(10, 0, 15, 4, Math.PI / 2)], GateLeg()));
         Assert.Equal(3.9f, result.AverageSpeedOverGround!.Value, 4);
+        Assert.Equal(3.9f, result.AverageVelocityMadeGood!.Value, 4);
         Assert.InRange(result.SailedDistanceMeters!.Value, 19.99, 20.01);
         var p = PortTrack();
         var clipped = RaceLegCalculator.Calculate(Guid.NewGuid(), Start.AddSeconds(2), Start.AddSeconds(29), p, [MarkLeg()]);
