@@ -90,7 +90,7 @@ Map from the changed paths:
 
 | Changed path | Label |
 | --- | --- |
-| `Vakaros.Vkx.Parser/**` | `parser` |
+| `VkxIngestion*`, `RaceDetectionService`, the `Vakaros.Vkx.Parser.NET` package reference | `parser` |
 | `SailSight.Api/**` | `api` |
 | `SailSight.Web/**` | `web` |
 | `SailSight.Shared/**` | `shared` |
@@ -104,8 +104,9 @@ The teal labels are the ones that need judgement, because a path match alone doe
   replacing them — an invitation-flow UI change is `web` + `auth`.
 - **`database`** means schema changes, not any code that happens to query the DB. A new migration
   or hypertable is `database`; a controller running a new LINQ query is just `api`.
-- **`parser`** is both the project and the VKX-format domain. Once it ships as a NuGet package the
-  project half moves out and only the domain half stays meaningful here.
+- **`parser`** is the VKX-format domain inside SailSight: how parsed records are validated, mapped
+  and turned into races. It pairs with `api`. The parser itself is the `Vakaros.Vkx.Parser.NET`
+  package in its own repository.
 
 Generated files don't count toward scope on their own — a PR that only changes `api-types.ts`
 because the API changed is `api` + `shared`, not `web`.
@@ -158,7 +159,7 @@ If you add or rename a type label, update `.github/release.yml` in the same PR.
 | Speed up track rendering with better downsampling | `performance` `web` |
 | Bump Next.js | `chore` `dependencies` `web` |
 | Move `/api/v1` to `/api/v2` | `feature` `api` `shared` `breaking change` |
-| Correct the VKX format spec | `documentation` `parser` |
+| Bump Vakaros.Vkx.Parser.NET and adapt ingestion | `chore` `dependencies` `api` `parser` |
 | Redeem-invitation page won't submit | `bug` `web` `auth` |
 | Rotate PAT hashing to a stronger algorithm | `security` `api` `auth` `database` |
 
@@ -188,6 +189,6 @@ move `latest`.
 
 ## Note on `parser`
 
-`Vakaros.Vkx.Parser` is being extracted into its own NuGet package. It is intentionally kept as-is
-— avoid opening PRs against it unless the change is genuinely required here, and prefer landing
-parser work in the package once it exists. `label:parser` is the tracking list for that split.
+VKX decoding lives in the [Vakaros.Vkx.Parser.NET](https://github.com/SCarlsen7757/Vakaros.Vkx.Parser.NET)
+package. Fix parsing bugs there (it has its own label scheme and release flow), publish a new
+version, then bump the package here. `label:parser` in SailSight covers only the integration side.

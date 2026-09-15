@@ -17,7 +17,7 @@ def request(method,path,body=None,headers=None):
 assert request('GET','/api/v1/auth/providers')[0]==200
 assert request('POST','/api/v1/auth/login',json.dumps({'email':'compose-admin@test.local','password':password}),{'Content-Type':'application/json'})[0]==200
 path=Path('.security-boundary.vkx')
-base=b'\xff\x01'+bytes(6)+b'\x08'+bytes(12)+b'\x0a'+b'\x02'+struct.pack('<Qii7f',int(time.time()*1000),550000000,120000000,1,0,0,1,0,0,0)
+base=b'\xff\x05'+bytes(6)+b'\x08'+bytes(12)+b'\x0a'+b'\x02'+struct.pack('<Qii7f',int(time.time()*1000),550000000,120000000,1,0,0,1,0,0,0)
 remaining=200_000_000-len(base)
 # Internal record lengths 53, 17 and 13 allow an exact 200,000,000-byte file.
 n=remaining//53

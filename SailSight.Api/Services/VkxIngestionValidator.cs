@@ -1,8 +1,9 @@
 using System.Buffers.Binary;
+using Vakaros.Vkx.Parser.NET;
 
 namespace SailSight.Api.Services;
 
-/// <summary>Bounded structural and value validation before the unchanged parser allocates records.</summary>
+/// <summary>Bounded structural and value validation before the Vakaros.Vkx.Parser.NET parser allocates records.</summary>
 public static class VkxIngestionValidator
 {
     private static readonly Dictionary<int, int> Sizes = new()
@@ -29,6 +30,9 @@ public static class VkxIngestionValidator
             if (count == 1 && key != 255) throw new FormatException("Missing page header.");
             if (key == 255)
             {
+                // Only VKX versions the parser fully knows are accepted; row sizes differ in older versions.
+                if (payload[0] is < VkxFormatVersion.MinimumSupported or > VkxFormatVersion.MaxKnown)
+                    throw new VkxUnsupportedVersionException(payload[0]);
                 if (version.HasValue && version != payload[0]) throw new FormatException("Inconsistent format version.");
                 version = payload[0];
             }

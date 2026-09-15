@@ -41,10 +41,10 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.17.3" />
+    <PackageReference Include="Vakaros.Vkx.Parser.NET" Version="0.2.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Vakaros.Vkx.Parser/Vakaros.Vkx.Parser.csproj" />
     <ProjectReference Include="../SailSight.Shared/SailSight.Shared.csproj" />
   </ItemGroup>
 

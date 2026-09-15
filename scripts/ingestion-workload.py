@@ -17,7 +17,7 @@ assert call('GET','/auth/providers')[0]==200
 assert call('POST','/auth/login',{'email':'compose-admin@test.local','password':password})[0]==200
 base_time=int(time.time()*1000)
 def file(races):
- data=bytearray(b'\xff\x01'+bytes(6)+b'\x08'+bytes(12)+b'\x0a')
+ data=bytearray(b'\xff\x05'+bytes(6)+b'\x08'+bytes(12)+b'\x0a')
  for i in range(races*3):
   timestamp=base_time+i*100
   if i%3==1:data.extend(b'\x04'+struct.pack('<QBi',timestamp,3,0))
@@ -34,7 +34,7 @@ for count in [1000,5000]:
  assert len(data['races'])==count
  print(f'{count} races / {count*3} positions: {elapsed:.3f}s')
 status,data=upload(file(10001));assert status==413,(status,data);print('10,001 races: 413')
-status,data=upload(b'\xff\x01'+bytes(6)+(b'\x07'+bytes(12))*5_000_000)
+status,data=upload(b'\xff\x05'+bytes(6)+(b'\x07'+bytes(12))*5_000_000)
 assert status==413,(status,data);print('5,000,001 records: 413')
 for attempt in range(21):
  status,_=upload(b'\xff')

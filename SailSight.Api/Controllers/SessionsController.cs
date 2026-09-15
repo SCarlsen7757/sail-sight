@@ -16,6 +16,7 @@ using SailSight.Shared.Dtos.Courses;
 using SailSight.Shared.Dtos.Races;
 using SailSight.Shared.Dtos.Sessions;
 using SailSight.Shared.Dtos.Shares;
+using Vakaros.Vkx.Parser.NET;
 
 namespace SailSight.Api.Controllers;
 
@@ -53,6 +54,8 @@ public class SessionsController(
             return Conflict(new { message = "A session with the same file content has already been uploaded." });
         Models.Entities.Session session;
         try { session = await ingestionService.IngestAsync(ownerId, stream, Path.GetFileName(file.FileName), contentHash, ct); }
+        catch (VkxUnsupportedVersionException)
+        { return BadRequest(new { error = "unsupported_vkx_version" }); }
         catch (Exception ex) when (ex is FormatException or EndOfStreamException or ArgumentOutOfRangeException)
         { return BadRequest(new { error = "invalid_vkx" }); }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })

@@ -10,6 +10,7 @@ using SailSight.Api.Middleware;
 using SailSight.Api.Models.Entities;
 using SailSight.Api.Services;
 using SailSight.Shared.Dtos.Sessions;
+using Vakaros.Vkx.Parser.NET;
 
 namespace SailSight.Api.Tests;
 
@@ -89,10 +90,10 @@ public class SecurityTests
         first.Dispose(); using var again = gate.TryEnter(a); Assert.NotNull(again);
     }
 
-    private static MemoryStream File(bool duplicate = false, float speed = 1, int latitude = 550000000)
+    private static MemoryStream File(bool duplicate = false, float speed = 1, int latitude = 550000000, byte version = VkxFormatVersion.V1_4)
     {
         var stream = new MemoryStream(); var writer = new BinaryWriter(stream);
-        writer.Write((byte)255); writer.Write((byte)1); writer.Write(new byte[6]);
+        writer.Write((byte)255); writer.Write(version); writer.Write(new byte[6]);
         writer.Write((byte)8); writer.Write(new byte[12]); writer.Write((byte)10);
         for (var i = 0; i < (duplicate ? 2 : 1); i++)
         {
@@ -109,4 +110,13 @@ public class SecurityTests
     [Fact] public void TruncationFails() { using var file = File(); file.SetLength(file.Length-1); Assert.Throws<FormatException>(() => VkxIngestionValidator.Validate(file, new(), default)); }
     [Fact] public void RecordBudgetFails() { using var file = File(); Assert.Equal(413, Assert.Throws<BadHttpRequestException>(() => VkxIngestionValidator.Validate(file, new() { Records=2 }, default)).StatusCode); }
     [Fact] public void CancellationStopsValidation() { using var file = File(); Assert.Throws<OperationCanceledException>(() => VkxIngestionValidator.Validate(file, new(), new CancellationToken(true))); }
+    [Theory] [InlineData(VkxFormatVersion.V1_0)] [InlineData(VkxFormatVersion.V1_3)] [InlineData(VkxFormatVersion.MaxKnown + 1)]
+    public void UnsupportedVersionFails(byte version) { using var file = File(version: version); Assert.Equal(version, Assert.Throws<VkxUnsupportedVersionException>(() => VkxIngestionValidator.Validate(file, new(), default)).FormatVersion); }
+    [Fact]
+    public void ValidatedFileParses()
+    {
+        using var file = File(speed: 2.5f); VkxIngestionValidator.Validate(file, new(), default);
+        var session = VkxParser.Parse(file, default);
+        Assert.False(session.IsPartial); Assert.Equal(2.5f, Assert.Single(session.PositionRecords).SpeedOverGroundMetresPerSecond);
+    }
 }

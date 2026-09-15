@@ -13,7 +13,6 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["SailSight.Api/SailSight.Api.csproj", "SailSight.Api/"]
 COPY ["SailSight.Shared/SailSight.Shared.csproj", "SailSight.Shared/"]
-COPY ["Vakaros.Vkx.Parser/Vakaros.Vkx.Parser.csproj", "Vakaros.Vkx.Parser/"]
 RUN dotnet restore "./SailSight.Api/SailSight.Api.csproj"
 COPY . .
 WORKDIR "/src/SailSight.Api"

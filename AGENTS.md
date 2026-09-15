@@ -45,10 +45,10 @@ Next.js 15 (Web)  ──HTTP/JSON──►  ASP.NET Core 10 (Api)  ──EF Core
                                           ▲
                                   VkxIngestionService
                                           │ parses
-                                  Vakaros.Vkx.Parser
+                                  Vakaros.Vkx.Parser.NET (NuGet)
 ```
 
-- **`Vakaros.Vkx.Parser`** — pure binary decoder for the VKX 1.4 format (little-endian, fixed-size rows keyed by a `U8` type byte). The format spec lives in `Vakaros.Vkx.Parser/vkx_format.md`. This project is intentionally kept as-is; it will be replaced by a NuGet package in the future.
+- **`Vakaros.Vkx.Parser.NET`** — NuGet package ([repo](https://github.com/SCarlsen7757/Vakaros.Vkx.Parser.NET), beta 0.x) that decodes the VKX 1.4 format (little-endian, fixed-size rows keyed by a `U1` type byte; spec in the package repo's `vkx_format.md`). Parser fixes go in that repo, not here. Records expose each measured value in SI and imperial units (`WindDirectionRadians`, `SpeedOverGroundKnots`, …); **ingestion must always read the SI properties**. Only VKX 1.4 files are accepted: `VkxIngestionValidator` throws `VkxUnsupportedVersionException` for other versions (400 `unsupported_vkx_version`).
 - **`SailSight.Api`** — ASP.NET Core 10 REST API. Handles ingestion, race detection, auth, and all CRUD. Migrations run automatically on startup unless `SKIP_DB_MIGRATION=true`.
 - **`SailSight.Shared`** — DTOs shared between the API and web (record types in `Dtos/`). Never add domain logic here.
 - **`SailSight.Web`** — Next.js 15 App Router frontend. SSR fetches use the `API_BASE_URL` env var; client-side fetches use the same-origin `/api/*` proxy.
