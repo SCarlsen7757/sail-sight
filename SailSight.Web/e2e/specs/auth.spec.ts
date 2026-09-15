@@ -23,10 +23,10 @@ test.describe("authentication", () => {
     await page.goto("/account");
     await expect(page.getByText(user.email)).toBeVisible();
     await page.getByRole("button", { name: "Sign out" }).click();
-    // logout() pushes /login, but AuthGate may redirect the signed-out /account page to /sessions first.
-    await expect(page).toHaveURL(/\/(login|sessions)$/);
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
     // Server-side state is not asserted here: a request in flight during logout (e.g. the notification
-    // stream) can currently re-issue the auth cookie, so that check would be flaky.
+    // stream) can currently re-issue the auth cookie, so that check would be flaky (#25).
   });
 
   test("signed-in pages send anonymous visitors to public sessions", async ({ page }) => {
