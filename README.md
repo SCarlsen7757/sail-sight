@@ -18,6 +18,7 @@ A self-hosted sailing telemetry analysis tool for [Vakaros](https://vakaros.com/
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
   - [Features](#features)
+  - [Screenshots](#screenshots)
   - [Architecture](#architecture)
     - [Frontend Tech Stack](#frontend-tech-stack)
     - [API Versioning and TypeScript Codegen](#api-versioning-and-typescript-codegen)
@@ -57,6 +58,24 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 | ⛵ **Boats** | Register boats with name, sail number, and class; link them to sessions |
 | 📍 **Marks & Courses** | Define race-course marks and build ordered course legs; overlay them on any race map |
 | 🐳 **Self-hosted** | One `docker compose up` starts the database, API, and Web UI |
+
+---
+
+## Screenshots
+
+| Dark | Light |
+| --- | --- |
+| ![Race viewer, dark theme](docs/screenshots/dark/desktop/race-viewer.png) | ![Race viewer, light theme](docs/screenshots/light/desktop/race-viewer.png) |
+| ![Session detail, dark theme](docs/screenshots/dark/desktop/session-detail.png) | ![Session detail, light theme](docs/screenshots/light/desktop/session-detail.png) |
+| ![Sessions list, dark theme](docs/screenshots/dark/desktop/sessions.png) | ![Team page, light theme](docs/screenshots/light/desktop/teams.png) |
+
+<p>
+  <img src="docs/screenshots/dark/mobile/race-viewer.png" alt="Race viewer on mobile, dark theme" width="200">
+  <img src="docs/screenshots/light/mobile/public-race.png" alt="Public race page on mobile, light theme" width="200">
+  <img src="docs/screenshots/dark/mobile/sessions.png" alt="Sessions list on mobile, dark theme" width="200">
+</p>
+
+More pages, themes and viewports are in [`docs/screenshots/`](docs/screenshots/). They are generated from seeded data with `npm run screenshots`; see [its README](docs/screenshots/README.md).
 
 ---
 

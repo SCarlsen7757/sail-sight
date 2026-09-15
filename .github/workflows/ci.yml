@@ -84,6 +84,21 @@ jobs:
             SailSight.Web/test-results/
           retention-days: 14
 
+      - name: Take screenshots
+        if: ${{ !cancelled() }}
+        run: npm run screenshots
+        env:
+          SCREENSHOT_DIR: ${{ runner.temp }}/screenshots
+
+      - name: Upload screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: screenshots
+          path: ${{ runner.temp }}/screenshots/
+          if-no-files-found: ignore
+          retention-days: 30
+
       - name: Container logs
         if: failure()
         run: docker compose --env-file .e2e-compose.env -p sailsight-e2e -f docker-compose.yml logs --no-color --tail 200 migrate api web

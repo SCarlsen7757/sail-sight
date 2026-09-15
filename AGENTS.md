@@ -34,7 +34,25 @@ npm run lint       # ESLint
 npm run gen:api    # regenerate src/lib/api-types.ts from the OpenAPI spec
 ```
 
-No automated test suite exists yet.
+### Tests
+
+```bash
+# API unit tests
+dotnet test SailSight.Api.Tests
+
+# Frontend E2E (Playwright) — run from SailSight.Web; stop the dev stack first
+npm run e2e:up        # start docker-compose.yml as project "sailsight-e2e" with a generated .e2e-compose.env
+npm run seed          # fill it with the fixture scenario (safe to re-run); also useful for manual testing
+npm run test:e2e      # run the specs in e2e/specs
+npm run screenshots   # regenerate docs/screenshots/<theme>/<viewport>/<page>.png
+npm run e2e:down      # stop the stack and delete its database
+```
+
+- The E2E stack uses the same API port (8080) and fixed subnet as the dev stack, so they cannot run at the same time. `SAILSIGHT_URL` (default `http://localhost:8081`) changes the web origin; it must match `APP_ORIGIN`.
+- The generated env file raises `LOGIN_RATE_LIMIT_PER_MINUTE` (`RateLimits__LoginPerMinute`, default 5) and `INGESTION_UPLOADS_PER_HOUR` (`Ingestion__UploadsPerHour`, default 20) so seeding and tests are not throttled.
+- Seed data comes from real `.vkx` recordings in `SailSight.Web/e2e/fixtures/vkx/` described by `manifest.json`. Review new recordings for privacy and size first (see the fixtures README).
+- Specs use role and label locators; add accessible labels before reaching for `data-testid`. Tests that create data use throwaway users or unique names and never modify seeded entities.
+- Commit regenerated screenshots together with UI changes that affect them.
 
 ---
 
