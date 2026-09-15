@@ -6,3 +6,7 @@ dist
 .env*.local
 *.tsbuildinfo
 next-env.d.ts.bak
+
+# E2E seeder output
+/e2e/.auth/
+/e2e/.seed/

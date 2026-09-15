@@ -434,3 +434,4 @@ FodyWeavers.xsd
 # Contains live PostgreSQL files; must never be committed.
 /data/
 /.security-*
+/.e2e-*

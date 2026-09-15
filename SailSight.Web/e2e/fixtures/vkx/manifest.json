@@ -1,0 +1,20 @@
+{
+  "fixtures": [
+    {
+      "file": "Atlas 2 17.9.2025.vkx",
+      "course": {
+        "name": "Evening Windward/Leeward",
+        "year": 2025,
+        "marks": [
+          { "key": "west", "name": "West Mark", "latitude": 55.4918, "longitude": 9.5112, "roundingRadiusMeters": 30 },
+          { "key": "east", "name": "East Mark", "latitude": 55.4946, "longitude": 9.5422, "roundingRadiusMeters": 30 }
+        ],
+        "legs": ["west", "east", "west", "east"]
+      },
+      "uploads": [
+        { "owner": "admin", "displayName": "Evening race, 17 Sep 2025", "public": true, "shareWithTeam": false },
+        { "owner": "skipper", "displayName": "Evening race (skipper), 17 Sep 2025", "public": false, "shareWithTeam": true }
+      ]
+    }
+  ]
+}

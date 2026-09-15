@@ -4,3 +4,6 @@ node_modules
 Dockerfile
 .dockerignore
 README.md
+e2e
+playwright-report
+test-results

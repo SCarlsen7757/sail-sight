@@ -43,6 +43,8 @@ services:
       Auth__Admin__Password: ${AUTH_ADMIN_PASSWORD:-}
       Web__PublicBaseUrl: ${PUBLIC_BASE_URL:-http://localhost:8081}
       TrustedProxies__0: 172.30.89.3
+      Ingestion__UploadsPerHour: ${INGESTION_UPLOADS_PER_HOUR:-20}
+      RateLimits__LoginPerMinute: ${LOGIN_RATE_LIMIT_PER_MINUTE:-5}
 
   api:
     image: ${DOCKER_REGISTRY-}sailsightapi

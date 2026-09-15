@@ -8,7 +8,10 @@
     "start": "node entry-server.mjs",
     "lint": "eslint .",
     "gen:api": "openapi-typescript ../SailSight.Api/OpenApi/SailSight.Api.json -o src/lib/api-types.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p e2e",
+    "e2e:up": "tsx e2e/stack/stack.ts up",
+    "e2e:down": "tsx e2e/stack/stack.ts down",
+    "seed": "tsx e2e/seed/index.ts"
   },
   "dependencies": {
     "@radix-ui/react-slider": "1.4.7",
@@ -38,6 +41,7 @@
     "openapi-typescript": "7.13.0",
     "postcss": "8.5.28",
     "tailwindcss": "4.3.3",
+    "tsx": "4.23.13",
     "typescript": "5.9.3"
   }
 }
