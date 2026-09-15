@@ -17,4 +17,4 @@ public record RaceDetailDto(
     LinePositionDto? BoatEnd,
     StartAnalysisDto? StartAnalysis,
     int TelemetryRateHz,
-    Guid? BoatId);
+    Guid? BoatId, string AnalysisStatus = "Pending", string? AnalysisReason = null);

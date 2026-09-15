@@ -66,6 +66,13 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLe
 
         var ownedMarks = await db.Marks.CountAsync(m => markIds.Contains(m.Id) && m.OwnerUserId == userId, ct);
         if (ownedMarks != markIds.Count) return BadRequest(new { message = "One or more marks are not owned by you." });
+        var coordinates = await db.Marks.Where(m => markIds.Contains(m.Id)).ToDictionaryAsync(m => m.Id, ct);
+        foreach (var leg in request.Legs.Where(l => ParseLegType(l.LegType) == LegType.Gate))
+        {
+            var a = coordinates[leg.MarkId]; var b = coordinates[leg.GateMarkId!.Value];
+            if (GeoHelper.HaversineMeters(a.Latitude, a.Longitude, b.Latitude, b.Longitude) < 0.01)
+                return BadRequest(new { message = "Gate endpoints must have distinct positions." });
+        }
 
         var course = new Course
         {
@@ -114,6 +121,13 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLe
 
         var ownedMarks = await db.Marks.CountAsync(m => markIds.Contains(m.Id) && m.OwnerUserId == userId, ct);
         if (ownedMarks != markIds.Count) return BadRequest(new { message = "One or more marks are not owned by you." });
+        var coordinates = await db.Marks.Where(m => markIds.Contains(m.Id)).ToDictionaryAsync(m => m.Id, ct);
+        foreach (var leg in request.Legs.Where(l => ParseLegType(l.LegType) == LegType.Gate))
+        {
+            var a = coordinates[leg.MarkId]; var b = coordinates[leg.GateMarkId!.Value];
+            if (GeoHelper.HaversineMeters(a.Latitude, a.Longitude, b.Latitude, b.Longitude) < 0.01)
+                return BadRequest(new { message = "Gate endpoints must have distinct positions." });
+        }
 
         course.Name = request.Name;
         course.Year = request.Year;
@@ -131,6 +145,8 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLe
             var leg = request.Legs[i];
             course.Legs.Add(BuildLeg(leg, i + 1));
         }
+        foreach (var race in await db.Races.Where(r => r.CourseId == course.Id).ToListAsync(ct))
+        { race.AnalysisRevision = 0; race.AnalysisStatus = RaceAnalysisStatus.Pending; }
         await db.SaveChangesAsync(ct);
 
         await legAnalysis.ReanalyzeRacesByCourseAsync(course.Id, ct);
@@ -150,8 +166,11 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLe
         var userId = currentUser.UserId;
         var course = await db.Courses.FirstOrDefaultAsync(c => c.Id == id && c.OwnerUserId == userId, ct);
         if (course is null) return NotFound();
+        var affectedRaces = await db.Races.Where(r => r.CourseId == id).ToListAsync(ct);
+        foreach (var race in affectedRaces) { race.CourseId = null; race.AnalysisRevision = 0; race.AnalysisStatus = RaceAnalysisStatus.Pending; }
         db.Courses.Remove(course);
         await db.SaveChangesAsync(ct);
+        foreach (var race in affectedRaces) await legAnalysis.AnalyzeRaceAsync(race.Id, ct);
         return NoContent();
     }
 
@@ -168,6 +187,7 @@ public class CoursesController(AppDbContext db, ICurrentUser currentUser, RaceLe
             if (legType == LegType.Gate)
             {
                 if (leg.GateMarkId is null) return (ids, "Gate legs require a second mark (GateMarkId).");
+                if (leg.GateMarkId == leg.MarkId) return (ids, "Gate endpoints must be distinct.");
                 ids.Add(leg.GateMarkId.Value);
             }
         }

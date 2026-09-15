@@ -203,6 +203,7 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
 });
 builder.Services.AddScoped<StartAnalysisService>();
 builder.Services.AddScoped<RaceLegAnalysisService>();
+if (!skipDbConnection && !migrateOnly) builder.Services.AddHostedService<RaceAnalysisBackfill>();
 builder.Services.AddSingleton<NotificationBus>();
 
 // CORS

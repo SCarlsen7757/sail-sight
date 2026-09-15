@@ -82,6 +82,13 @@ public class MarksController(AppDbContext db, ICurrentUser currentUser, RaceLegA
                                mark.Longitude != request.Longitude || 
                                mark.DefaultRoundingRadiusMeters != request.DefaultRoundingRadiusMeters;
 
+        if (needsReanalysis)
+        {
+            var courses = db.CourseLegs.Where(l => l.MarkId == mark.Id || l.GateMarkId == mark.Id).Select(l => l.CourseId);
+            foreach (var race in await db.Races.Where(r => r.CourseId.HasValue && courses.Contains(r.CourseId.Value)).ToListAsync(ct))
+            { race.AnalysisRevision = 0; race.AnalysisStatus = RaceAnalysisStatus.Pending; }
+        }
+
         mark.Name = request.Name;
         mark.ActiveFrom = request.ActiveFrom;
         mark.ActiveUntil = request.ActiveUntil;
@@ -105,7 +112,7 @@ public class MarksController(AppDbContext db, ICurrentUser currentUser, RaceLegA
         var userId = currentUser.UserId;
         var mark = await db.Marks.FirstOrDefaultAsync(m => m.Id == id && m.OwnerUserId == userId, ct);
         if (mark is null) return NotFound();
-        var isReferenced = await db.CourseLegs.AnyAsync(cl => cl.MarkId == id, ct);
+        var isReferenced = await db.CourseLegs.AnyAsync(cl => cl.MarkId == id || cl.GateMarkId == id, ct);
         if (isReferenced)
             return Conflict(new { message = "Cannot delete mark; it is referenced by one or more course legs." });
         db.Marks.Remove(mark);

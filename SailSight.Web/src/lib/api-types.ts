@@ -3424,6 +3424,9 @@ export interface components {
             telemetryRateHz: number | string;
             /** Format: uuid */
             boatId: null | string;
+            /** @default Pending */
+            analysisStatus: string;
+            analysisReason?: null | string;
         };
         RaceDto: {
             /** Format: uuid */
@@ -3460,18 +3463,26 @@ export interface components {
             /** Format: int32 */
             legIndex: number | string;
             status: string;
+            reason: null | string;
             /** Format: date-time */
-            exitedPreviousMarkAt: string;
+            exitedPreviousMarkAt: null | string;
             /** Format: date-time */
-            enteredCurrentMarkAt: string;
+            enteredCurrentMarkAt: null | string;
+            /** Format: date-time */
+            exitedCurrentMarkAt: null | string;
             /** Format: double */
-            sailedDistanceMeters: number | string;
+            sailedDistanceMeters: null | number | string;
             /** Format: float */
-            averageSpeedOverGround: number | string;
+            averageSpeedOverGround: null | number | string;
             /** Format: float */
-            averageVelocityMadeGood: number | string;
+            averageVelocityMadeGood: null | number | string;
             /** Format: float */
-            maxSpeedOverGround: number | string;
+            maxSpeedOverGround: null | number | string;
+            targetType: string;
+            /** Format: double */
+            targetLatitude: number | string;
+            /** Format: double */
+            targetLongitude: number | string;
         };
         RaceTelemetryDto: {
             positions: components["schemas"]["PositionDto"][];

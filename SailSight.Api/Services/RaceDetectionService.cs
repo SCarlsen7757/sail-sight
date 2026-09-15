@@ -17,9 +17,12 @@ public class RaceDetectionService
     /// <param name="sessionId">The database session ID to associate races with.</param>
     /// <returns>A list of detected <see cref="Race"/> entities numbered chronologically.</returns>
     public List<Race> DetectRaces(VkxSession session, Guid sessionId)
+        => DetectRaces(session.RaceTimerEventRecords, sessionId);
+
+    public List<Race> DetectRaces(IEnumerable<RaceTimerEventRecord> records, Guid sessionId)
     {
         var races = new List<Race>();
-        var events = session.RaceTimerEventRecords
+        var events = records
             .OrderBy(e => e.Timestamp)
             .ToList();
 
@@ -36,8 +39,8 @@ public class RaceDetectionService
         {
             switch (evt.EventType)
             {
-                case TimerEventType.Start:
-                case TimerEventType.Sync:
+                case TimerEventType.Start when state == RaceState.Idle:
+                case TimerEventType.Sync when state == RaceState.Idle:
                     // Remember the latest countdown trigger; a Sync after a Start
                     // supersedes the earlier value (timer was re-synced).
                     countdownStart = evt.Timestamp;
