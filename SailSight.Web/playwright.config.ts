@@ -28,5 +28,12 @@ export default defineConfig({
       dependencies: ["setup"],
       use: { ...devices["Desktop Chrome"] },
     },
+    {
+      // npm run screenshots → docs/screenshots/<theme>/<viewport>/<page>.png
+      name: "screenshots",
+      testMatch: /screenshots[\\/].*\.spec\.ts/,
+      dependencies: ["setup"],
+      use: { ...devices["Desktop Chrome"] },
+    },
   ],
 });

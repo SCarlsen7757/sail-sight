@@ -6,8 +6,9 @@ description: Open a pull request for SailSight with correctly applied labels. Us
 # Creating a pull request for SailSight
 
 Base branch is always `main`. There is no `develop` branch — just `main` plus feature branches,
-and small PRs merged often. CI runs on every PR to `main`: Build API, Build Web, and non-pushing
-Docker builds for both images.
+and small PRs merged often. CI runs on every PR to `main`: Build API, Build Web, E2E Tests (Playwright against the compose
+stack, plus a `screenshots` artifact), non-pushing Docker builds for both images, and the security
+workflow (API unit tests, audits, container scans, runtime regressions).
 
 Releases are cut separately by pushing a version tag, never by merging (see *Releasing* below).
 
@@ -18,13 +19,22 @@ Never open a PR from `main`. If the current branch is `main`, create a feature b
 Branch naming is a convention only — nothing parses it since GitVersion was removed. Match the
 existing style: `feature/<scope>/<short-description>`.
 
-## 2. Verify the work builds
-
-There is no automated test suite. The only real signal before CI is a local build:
+## 2. Verify the work builds and tests pass
 
 ```bash
 dotnet build                 # also regenerates OpenAPI spec + api-types.ts
-cd SailSight.Web && npm run lint && npm run build
+dotnet test SailSight.Api.Tests
+cd SailSight.Web && npm run lint && npm run typecheck && npm run build
+```
+
+For changes to `SailSight.Web` or `SailSight.Api` behaviour, also run the E2E suite (stop the dev
+stack first):
+
+```bash
+cd SailSight.Web
+npm run e2e:up && npm run seed && npm run test:e2e
+npm run screenshots          # only if the UI changed; commit the updated docs/screenshots/*.png
+npm run e2e:down
 ```
 
 If `dotnet build` changed `SailSight.Api/OpenApi/SailSight.Api.json` or

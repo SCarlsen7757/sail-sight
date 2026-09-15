@@ -12,9 +12,21 @@ export const authFile = (role: SignedInRole) => path.join(authDir, `${role}.json
 export const fixtureFile = (name: string) => path.join(fixturesDir, name);
 
 const origin = new URL(baseUrl).origin;
-// A 1×1 grey PNG. Leaflet stretches it over each tile, so maps render without network access.
-const STUB_TILE = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNoaGgAAAMEAYFL09IQAAAAAElFTkSuQmCC", "base64");
+// 1×1 PNGs that Leaflet stretches over each tile, so maps render without network access and without
+// depending on third-party tiles (CARTO basemaps currently return an "API KEY REQUIRED" watermark).
+const STUB_TILE_DARK = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQ0dEDAAEOAIcVSdztAAAAAElFTkSuQmCC", "base64");
+const STUB_TILE_LIGHT = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGN48uIFAAVoArVLx9a5AAAAAElFTkSuQmCC", "base64");
+const TRANSPARENT_TILE = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
 const TILE_HOSTS = /basemaps\.cartocdn\.com|tile\.openstreetmap\.org|tiles\.openseamap\.org/;
+
+/** Replaces map tiles with flat, theme-matched stubs (the OpenSeaMap overlay becomes transparent). */
+export async function stubMapTiles(context: BrowserContext) {
+  await context.route(TILE_HOSTS, route => {
+    const url = route.request().url();
+    const body = url.includes("openseamap") ? TRANSPARENT_TILE : url.includes("dark_all") ? STUB_TILE_DARK : STUB_TILE_LIGHT;
+    return route.fulfill({ contentType: "image/png", body });
+  });
+}
 
 /** Adds the Origin and X-CSRF-Token headers the API requires for mutating requests. */
 async function withApiHeaders(context: APIRequestContext): Promise<APIRequestContext> {
@@ -55,7 +67,7 @@ export const test = base.extend<Fixtures>({
   },
 
   stubTiles: [async ({ context }, use) => {
-    await context.route(TILE_HOSTS, route => route.fulfill({ contentType: "image/png", body: STUB_TILE }));
+    await stubMapTiles(context);
     await use();
   }, { auto: true }],
 
@@ -102,7 +114,7 @@ export const test = base.extend<Fixtures>({
       if (!login.ok()) throw new Error(`Signing in as ${user.email} failed: ${login.status()}`);
       const context = await browser.newContext({ storageState: await api.storageState() });
       await api.dispose();
-      await context.route(TILE_HOSTS, route => route.fulfill({ contentType: "image/png", body: STUB_TILE }));
+      await stubMapTiles(context);
       contexts.push(context);
       return context;
     });
