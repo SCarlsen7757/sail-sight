@@ -72,6 +72,20 @@ const shots: Shot[] = [
   { name: "session-detail", role: "admin", path: seed => `/sessions/${publicSession(seed).id}`, ready: heading("Races"), fullPage: true },
   { name: "race-viewer", role: "admin", path: seed => `/races/${publicSession(seed).raceIds[0]}`, ready: midRace },
   { name: "public-race", role: "anonymous", path: seed => `/r/${publicSession(seed).raceIds[0]}`, ready: midRace },
+  { name: "race-viewer-heading", role: "admin", path: seed => `/races/${publicSession(seed).raceIds[0]}`, ready: async page => {
+    await midRace(page);
+    await page.getByRole("checkbox", { name: "Show heading" }).check();
+  } },
+  { name: "race-viewer-compact", role: "admin", path: seed => `/races/${publicSession(seed).raceIds[0]}`, ready: async page => {
+    await midRace(page);
+    await page.getByRole("button", { name: "Hide charts" }).click();
+  } },
+  { name: "session-viewer", role: "admin", path: seed => `/sessions/${publicSession(seed).id}/viewer`, ready: async page => {
+    await heading("Viewer")(page);
+    await page.getByRole("button", { name: "Show gauges" }).click();
+    await tilesLoaded(page);
+    await expect(page.getByRole("checkbox", { name: "Show heading" })).toBeVisible();
+  } },
   { name: "boats", role: "admin", path: () => "/boats", ready: heading("Fleet") },
   { name: "courses", role: "admin", path: () => "/courses", ready: heading("Courses") },
   { name: "marks", role: "admin", path: () => "/marks", ready: heading("Marks") },
@@ -105,7 +119,7 @@ for (const theme of themes) {
           // The login background is an animated, randomised canvas.
           if (shot.name === "login") await page.addStyleTag({ content: "canvas.pointer-events-none { visibility: hidden !important; }" });
           await page.waitForLoadState("networkidle");
-          if (shot.fullPage) await expandViewportToContent(page);
+          if (shot.fullPage || (viewportName === "mobile" && /race|viewer/.test(shot.name))) await expandViewportToContent(page);
 
           await page.screenshot({
             path: path.join(outputDir, theme, viewportName, `${shot.name}.png`),

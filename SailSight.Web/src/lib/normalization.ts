@@ -30,7 +30,7 @@ export function normalizePositions(pos: Position[], hz: number): NormalizedPosit
 
   return raw.map((p, i) => ({
     ...p,
-    sog: smoothedSog[i],
+    sog: Number.isFinite(p.sog) ? smoothedSog[i] : NaN,
     cog: smoothedCog[i],
     qW: smoothedQuats[i].w,
     qX: smoothedQuats[i].x,

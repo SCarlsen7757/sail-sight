@@ -1,4 +1,5 @@
 import SavitzkyGolay from "ml-savitzky-golay";
+import { normalizeQuaternion } from "./orientation";
 
 // Time-based decimation: keep at most `maxPoints` evenly spaced samples.
 export function downsample<T extends { t: number }>(data: T[], maxPoints = 2000): T[] {
@@ -62,6 +63,9 @@ export function sgSmooth(values: number[], windowSize = 11, order = 2): number[]
  * the angle via atan2 — correctly handles the 0/2π wrap-around.
  */
 export function sgSmoothAngularRad(radians: number[], windowSize = 11, order = 2): number[] {
+  if (radians.some((v) => !Number.isFinite(v))) {
+    return smoothValidRuns(radians, Number.isFinite, (run) => sgSmoothAngularRad(run, windowSize, order));
+  }
   if (radians.length === 0) return radians;
   const sins = radians.map(Math.sin);
   const coss = radians.map(Math.cos);
@@ -84,6 +88,25 @@ export interface Quaternion { w: number; x: number; y: number; z: number; }
  * noisier than GPS-derived metrics.
  */
 export function sgSmoothQuaternions(qs: Quaternion[], windowSize = 21, order = 2): Quaternion[] {
+  const normalized = qs.map((q) => normalizeQuaternion(q) ?? { w: NaN, x: NaN, y: NaN, z: NaN });
+  return smoothValidRuns(normalized, (q) => Number.isFinite(q.w), (run) => smoothQuaternionRun(run, windowSize, order));
+}
+
+function smoothValidRuns<T>(values: T[], valid: (value: T) => boolean, smooth: (run: T[]) => T[]): T[] {
+  const result = [...values];
+  let start = 0;
+  while (start < values.length) {
+    if (!valid(values[start])) { start++; continue; }
+    let end = start + 1;
+    while (end < values.length && valid(values[end])) end++;
+    const run = smooth(values.slice(start, end));
+    for (let i = 0; i < run.length; i++) result[start + i] = run[i];
+    start = end;
+  }
+  return result;
+}
+
+function smoothQuaternionRun(qs: Quaternion[], windowSize: number, order: number): Quaternion[] {
   if (qs.length === 0) return qs;
 
   // Step 1 — fix sign consistency
@@ -116,4 +139,3 @@ export function sgSmoothQuaternions(qs: Quaternion[], windowSize = 21, order = 2
     return { w: w / len, x: sx[i] / len, y: sy[i] / len, z: sz[i] / len };
   });
 }
-

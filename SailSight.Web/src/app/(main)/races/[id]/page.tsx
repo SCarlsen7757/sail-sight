@@ -17,32 +17,20 @@ const TelemetryPanels = dynamic(() => import("@/components/charts/telemetry-pane
 import { TimeWindowSlicer } from "@/components/charts/time-window-slicer";
 import { PlaybackControls } from "@/components/race-viewer/playback-controls";
 import { StartAnalysisPanel } from "@/components/race-viewer/start-analysis-panel";
-import { CompassRose, HeelTrimCard, NumericGauge, Inclinometer } from "@/components/gauges/gauges";
-import { Card } from "@/components/ui/controls";
+import { InstrumentPanel } from "@/components/gauges/instrument-panel";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import type { RaceDetail, Course, Boat, NormalizedPosition } from "@/lib/schemas";
 import { n } from "@/lib/schemas";
-import { useUnitPrefs } from "@/store/settings";
-import { convertSpeed, radiansToDegrees, speedUnitLabel } from "@/lib/units";
 import { normalizePositions } from "@/lib/normalization";
 import { useRaceViewerStore } from "@/store/race-viewer";
 import { usePlaybackState } from "@/hooks/use-playback-state";
 
 interface PageProps { params: Promise<{ id: string }>; }
 
-function quatToHeelTrim(w: number, x: number, y: number, z: number) {
-  const sinr_cosp = 2 * (w * x + y * z);
-  const cosr_cosp = 1 - 2 * (x * x + y * y);
-  const roll = Math.atan2(sinr_cosp, cosr_cosp);
-  const sinp = 2 * (w * y - z * x);
-  const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
-  return { heel: radiansToDegrees(roll), trim: radiansToDegrees(pitch) };
-}
-
 export default function RaceViewerPage({ params }: PageProps) {
   const { id: raceId } = use(params);
-  const { prefs } = useUnitPrefs();
+  const [showHeading, setShowHeading] = useState(false);
   const showGauges = useRaceViewerStore((s) => s.showGauges);
   const showCharts = useRaceViewerStore((s) => s.showCharts);
   const windowStart = useRaceViewerStore((s) => s.windowStart);
@@ -105,7 +93,6 @@ export default function RaceViewerPage({ params }: PageProps) {
 
   const { currentPos, playbackArrow } = usePlaybackState(positions, startMs);
 
-  const heelTrim = currentPos ? quatToHeelTrim(currentPos.qW, currentPos.qX, currentPos.qY, currentPos.qZ) : null;
   const compactMode = !showCharts;
 
   const startLine = race && race.pinEnd && race.boatEnd ? {
@@ -179,48 +166,15 @@ export default function RaceViewerPage({ params }: PageProps) {
         </div>
 
         {/* Right column: scrollable detail panel */}
-        <div className={`flex flex-col gap-4 min-h-0 ${compactMode ? "lg:w-auto lg:shrink-0" : "flex-1 lg:overflow-y-auto"}`}>
-          {showGauges && !compactMode && (
-            <div className="grid grid-cols-3 gap-3">
-              <NumericGauge label="SOG" value={currentPos ? convertSpeed(currentPos.sog, prefs.boatSpeed) : null} unit={speedUnitLabel(prefs.boatSpeed)} big />
-              <CompassRose headingDeg={currentPos ? radiansToDegrees(currentPos.cog) : null} />
-              <HeelTrimCard heel={heelTrim?.heel ?? null} trim={heelTrim?.trim ?? null} />
-            </div>
-          )}
-
-          {showGauges && compactMode && (
-            <Card className="p-3 lg:p-2 flex-shrink-0">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-secondary lg:mb-3">Gauges</h3>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4 lg:grid-cols-1 lg:gap-y-3">
-                <div>
-                  <div className="text-xs text-text-secondary">SOG</div>
-                  <div className="font-mono text-lg font-semibold">
-                    {currentPos ? convertSpeed(currentPos.sog, prefs.boatSpeed).toFixed(1) : "—"}
-                    <span className="ml-1 text-sm text-text-secondary">{speedUnitLabel(prefs.boatSpeed)}</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-text-secondary">Heading</div>
-                  <div className="font-mono text-lg">
-                    {currentPos ? `${Math.round(radiansToDegrees(currentPos.cog))}°` : "—"}
-                  </div>
-                </div>
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <Inclinometer label="Heel (°)" value={heelTrim?.heel ?? null} range={45} />
-                </div>
-                <div className="sm:col-span-2 lg:col-span-1">
-                  <Inclinometer label="Trim (°)" value={heelTrim?.trim ?? null} range={10} />
-                </div>
-              </div>
-            </Card>
-          )}
+        <div className={`@container flex flex-col gap-4 min-h-0 ${compactMode ? "lg:w-48 lg:shrink-0 lg:overflow-y-auto" : "flex-1 lg:overflow-y-auto"}`}>
+          {showGauges && <InstrumentPanel position={currentPos} compact={compactMode} />}
 
           <StartAnalysisPanel data={race.startAnalysis} raceId={raceId} compact={compactMode} />
 
           {showCharts && (
             <>
               <TimeWindowSlicer raceStartOffset={raceStartOffset} />
-              <TelemetryPanels raceId={raceId} raceStartMs={startMs} raceStartOffset={raceStartOffset} telemetryRateHz={n(race.telemetryRateHz)} />
+              <TelemetryPanels showHeading={showHeading} onShowHeadingChange={setShowHeading} raceId={raceId} raceStartMs={startMs} raceStartOffset={raceStartOffset} telemetryRateHz={n(race.telemetryRateHz)} />
             </>
           )}
         </div>

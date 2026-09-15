@@ -4,11 +4,12 @@ import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import type { EChartsOption } from "echarts";
 import { useTheme } from "next-themes";
+import { directionPoints } from "@/lib/orientation";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
 export interface SeriesPoint { t: number; v: number | null; }
-export interface ChartSeries { name: string; data: SeriesPoint[]; color?: string; yAxisIndex?: number; }
+export interface ChartSeries { name: string; data: SeriesPoint[]; color?: string; yAxisIndex?: number; angular?: boolean; dashed?: boolean; }
 
 export function TelemetryChart({
   title,
@@ -31,10 +32,11 @@ export function TelemetryChart({
   const dark = resolvedTheme === "dark";
 
   const option: EChartsOption = useMemo(() => {
-    const grid = { left: 50, right: 16, top: 28, bottom: 24 };
+    const grid = { left: 50, right: (yAxes?.length ?? 0) > 1 ? 40 : 16, top: yAxes?.some((axis) => axis.name) ? 46 : 28, bottom: 24 };
     const yAxis = (yAxes ?? [{}]).map((y) => ({
       type: "value" as const,
       name: y.name,
+      nameTextStyle: { color: dark ? "#9CA3AF" : "#6B7280", fontSize: 10 },
       min: y.min,
       max: y.max,
       axisLine: { show: false },
@@ -68,14 +70,14 @@ export function TelemetryChart({
       series: series.map((s) => ({
         name: s.name,
         type: "line",
-        smooth: true,
+        smooth: !s.angular,
         showSymbol: false,
-        sampling: "average",
-        connectNulls: true,
+        sampling: s.angular ? undefined : "average",
+        connectNulls: false,
         yAxisIndex: s.yAxisIndex ?? 0,
-        lineStyle: { width: 1.5, color: s.color },
+        lineStyle: { width: 1.5, color: s.color, type: s.dashed ? "dashed" : "solid" },
         itemStyle: { color: s.color },
-        data: s.data.map((p) => [p.t, p.v]), // ECharts expects [x, y] pairs
+        data: (s.angular ? directionPoints(s.data) : s.data).map((p) => [p.t, p.v != null && Number.isFinite(p.v) ? p.v : null]),
         ...(positionMarkLine ? { markLine: positionMarkLine } : {}),
       })),
     } as EChartsOption;
