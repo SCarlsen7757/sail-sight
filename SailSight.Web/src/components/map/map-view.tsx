@@ -141,7 +141,7 @@ function makePermanentBoatEndIcon(): L.DivIcon {
 const MARK_RADIUS = 6;
 
 export default function MapView({
-  positions, race, legs, startLine, playbackPosition, preRacePositions, windowPositions,
+  positions, race, legs, activeCourseLegId, startLine, playbackPosition, preRacePositions, windowPositions,
   boatLengthMeters,
   openSeaMap, trackMode, followMode, onExitFollow, fitTick,
 }: InternalProps) {
@@ -293,6 +293,8 @@ export default function MapView({
       {legs?.map((m, i) => {
         const lat = n(m.latitude);
         const lon = n(m.longitude);
+        const active = m.id === activeCourseLegId;
+        const markColor = active ? "#0d9488" : "#FFCC00";
         const isGate = m.legType === "Gate";
 
         if (isGate) {
@@ -304,8 +306,8 @@ export default function MapView({
             <Fragment key={i}>
               <CircleMarker
                 center={[lat, lon]}
-                radius={MARK_RADIUS}
-                pathOptions={{ color: "#FFCC00", fillColor: "#FFCC00", fillOpacity: 0.8 }}
+                radius={active ? MARK_RADIUS + 4 : MARK_RADIUS}
+                pathOptions={{ color: markColor, fillColor: markColor, fillOpacity: 0.8, weight: active ? 4 : 2 }}
               >
                 <Tooltip>{`${m.markName} (Gate Port Buoy)`}</Tooltip>
               </CircleMarker>
@@ -314,14 +316,14 @@ export default function MapView({
                 <Fragment>
                   <CircleMarker
                     center={[gateLat, gateLon]}
-                    radius={MARK_RADIUS}
-                    pathOptions={{ color: "#FFCC00", fillColor: "#FFCC00", fillOpacity: 0.8 }}
+                    radius={active ? MARK_RADIUS + 4 : MARK_RADIUS}
+                    pathOptions={{ color: markColor, fillColor: markColor, fillOpacity: 0.8, weight: active ? 4 : 2 }}
                   >
                     <Tooltip>{m.gateMarkName ?? `${m.markName} (Gate Starboard Buoy)`}</Tooltip>
                   </CircleMarker>
                   <Polyline
                     positions={[[lat, lon], [gateLat, gateLon]]}
-                    pathOptions={{ color: "#FFCC00", weight: 2, dashArray: "4,4", opacity: 0.8 }}
+                    pathOptions={{ color: markColor, weight: active ? 5 : 2, dashArray: active ? undefined : "4,4", opacity: 0.8 }}
                   />
                 </Fragment>
               )}
@@ -338,8 +340,8 @@ export default function MapView({
             <Fragment key={i}>
               <CircleMarker
                 center={[lat, lon]}
-                radius={MARK_RADIUS}
-                pathOptions={{ color: "#FFCC00", fillColor: "#FFCC00", fillOpacity: 0.8 }}
+                radius={active ? MARK_RADIUS + 4 : MARK_RADIUS}
+                pathOptions={{ color: markColor, fillColor: markColor, fillOpacity: 0.8, weight: active ? 4 : 2 }}
               >
                 <Tooltip>{tooltipText}</Tooltip>
               </CircleMarker>

@@ -17,3 +17,9 @@ Approach duration runs from the start gun (first leg) or previous mark exit to t
 The ReliableRaceAnalysis migration discards only old derived leg results and adds nullable outcomes, target geometry, and an analysis revision. Uploaded sessions, telemetry, and courses are preserved. At normal API startup, a sequential backfill rebuilds outdated results before requests are served; migration-only and OpenAPI generation skip it. Failed races are logged, unavailable, and retried on next startup. Large existing installations can therefore take longer to start on the first upgrade.
 
 Course assignment/removal and relevant course/mark edits invalidate results before recalculation. No database reset is required. Verify both fresh migrations and an upgrade from the preceding migration when changing this schema.
+
+## Replay
+
+Both public and authenticated race viewers show the same leg summary. Select a leg to pause and seek to its approach start. During recorded playback, the active target is highlighted on the map and the VMG readout uses raw speed and COG interpolated at the cursor. Gates are explicitly labelled as midpoint targets.
+
+The chart smooths each valid approach separately, preserving gaps at target changes, rounding intervals, and missing samples. Neither the readout nor the chart supplies values during countdown or unresolved legs. Summary metrics remain the backend's unsmoothed, time-weighted values. Course assignment is managed on the session page for each race.
