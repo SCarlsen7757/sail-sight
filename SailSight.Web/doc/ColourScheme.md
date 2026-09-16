@@ -1,10 +1,12 @@
-# Design Specification: Color Scheme
+# SailSight color reference
+
+The implemented theme tokens live in [`src/app/globals.css`](../src/app/globals.css). Tailwind 4 exposes them through `@theme inline`; `:root` defines light values and `.dark` overrides them. `next-themes` applies the theme class. This reference describes current colors; component guidance below is a convention for future edits, not a claim that every visualization uses CSS tokens.
 
 ## 1. Design Philosophy
 
 The SailSight frontend employs a **High-Tech / Racing** aesthetic. The color system is built to resemble modern racing dash displays: dark, high-contrast, and utilitarian, featuring neon accents for critical data readability.
 
-The palette uses a **SailSight Red / Orange** primary brand color, grounding the application in its maritime performance identity. Data visualization relies on vibrant, high-contrast colors (Cyans, Magentas, Yellows, Neon Greens) ensuring telemetry lines and heatmaps stand out sharply against both light and dark backgrounds.
+The palette uses **SailSight Red / Orange** for primary actions. Charts and maps use distinct series colors; several chart series have separate light/dark colors. Readability still needs visual verification in both themes.
 
 This document defines abstract "design tokens" (functional color roles) rather than hardcoded hex values tied to specific UI components. This ensures that as the frontend evolves, the underlying color system remains cohesive.
 
@@ -14,8 +16,8 @@ This document defines abstract "design tokens" (functional color roles) rather t
 
 ### Brand Colors
 
-* **Primary Brand:** SailSight Red/Orange (e.g., #FF4500 to #E63900)
-* **Primary Accent:** Vibrant Racing Orange (e.g., #FF6A00)
+* **Primary Brand:** SailSight Red/Orange (#FF4500)
+* **Primary Accent:** Vibrant Racing Orange (#FF6A00)
 
 ### Neutrals (Surfaces & Typography)
 
@@ -41,8 +43,12 @@ Used for system feedback, alerts, and toasts.
 
 Data needs maximum legibility on the interactive maps and charts.
 
-* **Primary Track/Telemetry Line:** Cyan (#00FFFF) or Magenta (#FF00FF) for extreme contrast.
-* **Secondary/Compare Lines:** Neon Green (#39FF14), Bright Yellow (#FFFF00).
+* **Flat GPS track:** Cyan (#00FFFF).
+* **SOG / COG:** Sky blue (#0369A1 light / #38BDF8 dark).
+* **Boat heading:** Dashed amber (#92400E light / #FBBF24 dark).
+* **Heel:** Teal (#0F766E light / #2DD4BF dark).
+* **Trim:** Purple (#7E22CE light / #C084FC dark).
+* **Optional telemetry:** Wind speed, speed through water, and shift-record heading use neon green (#39FF14); wind direction and depth use yellow (#FFFF00); temperature uses cyan (#00FFFF); load uses magenta (#FF00FF).
 * **Heatmap Gradient (Speed over Ground):**
   * Slow / Low: **Deep Blue** (#0000FF)
   * Medium-Low: **Cyan** (#00FFFF)
@@ -50,10 +56,10 @@ Data needs maximum legibility on the interactive maps and charts.
   * Fast / High: **Bright Yellow** (#FFFF00)
   * Maximum: **SailSight Red** (#FF0000)
 
-* **Special Overlays:**
+* **Special overlays:** Countdown track is dashed purple (#B200FF); selected time-window track is translucent orange (#FF8C00). Course targets are yellow (#FFCC00), with the active target teal (#0D9488). Rounding-radius outlines use green for starboard and red for port.
+* **Start-line marks:** Boat end is a square in #FF4500; pin end is a triangle in #00CCFF. The playback boat arrow is #FF4500.
 
-* *Pre-Race Countdown Track:* Dashed Vibrant Purple (#B200FF) or Amber (#FFBF00).
-* *Start Line Marks:* Boat end (Squared Red/Orange), Pin end (Triangular Blue/Cyan).
+Leaflet and ECharts receive explicit color values from their components. Shared digital instruments use theme utilities for text, borders, and direction indicators; heel/trim scales do not use the former green/yellow/red severity thresholds.
 
 ---
 
@@ -95,7 +101,8 @@ To support both Light and Dark modes without redefining components, use the foll
   * *Light Mode:* #E5E7EB
   * *Dark Mode:* #374151
 * **color-border-active**: Focused inputs, active tabs.
-  * *Both Modes:* SailSight Red/Orange or Cyan (to contrast High-Tech vibe).
+  * *Light Mode:* #FF4500.
+  * *Dark Mode:* #00CCFF.
 
 ---
 
@@ -107,4 +114,4 @@ When building or updating the UI (from tables to maps), ensure components apply 
 2. **Telemetry Maps (Leaflet):** The map tiles (Carto minimalistic) will inherently define the base. Ensure the track colors (Cyan/Magenta) are bright enough to contrast against both Light and Dark map instances.
 3. **Race Timer:** Ensure the numbers use Monospace fonts. Apply the **Warning (Amber)** token during the countdown phase and the **Success (Neon Green)** token for the elapsed race time.
 4. **Charts:** Chart crosshairs and grids should use a faint color-border-default with a very low opacity, ensuring the Data Visualization palette (Cyan, Magenta, etc.) remains central.
-5. **Toasts:** Toast backgrounds should ideally be deep dark (even in light mode) or use color-bg-surface but highlighted heavily by the Semantic Colors (Green, Red, Amber, Cyan) for immediate visual identification.
+5. **Toasts:** Use `bg-bg-elevated` with semantic icon and ring colors. Toasts appear at the top right and adapt their surface to the selected theme.

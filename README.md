@@ -2,7 +2,7 @@
 
 A self-hosted sailing telemetry analysis tool for [Vakaros](https://vakaros.com/) devices. Upload your `.vkx` log files, explore GPS tracks on an interactive map, and review race telemetry through recorded playback and historical charts — with multi-user accounts and team sharing.
 
-> **User management is admin-managed.** There is no public sign-up, password reset, email verification, or social login. The first admin is bootstrapped from environment variables; the admin then creates users and shares a one-time setup URL with each new user out-of-band (Slack/SMS/in-person).
+> **User management is admin-managed.** There is no unrestricted public sign-up, self-service password reset, email verification, or social login. The first admin is bootstrapped from environment variables; admins can create users with one-time setup URLs or issue shareable invitation links. Links are shared out-of-band (Slack/SMS/in-person).
 >
 > **Local quickstart:** Create an ignored `.env` with independent `POSTGRES_PASSWORD` and `RUNTIME_DB_PASSWORD`, plus `AUTH_ADMIN_EMAIL`. Optionally set `AUTH_ADMIN_PASSWORD`; otherwise obtain the first setup URL from `docker compose logs migrate`.
 >
@@ -24,24 +24,25 @@ A self-hosted sailing telemetry analysis tool for [Vakaros](https://vakaros.com/
     - [API Versioning and TypeScript Codegen](#api-versioning-and-typescript-codegen)
     - [Prerequisites](#prerequisites)
     - [Running with Docker Compose](#running-with-docker-compose)
-    - [Development (Visual Studio 2022)](#development-visual-studio-2022)
+    - [Self-hosting with pre-built images](#self-hosting-with-pre-built-images)
+    - [Development](#development)
   - [Usage](#usage)
     - [Uploading a Session](#uploading-a-session)
     - [Managing Boats and Courses](#managing-boats-and-courses)
     - [Viewing a Race](#viewing-a-race)
   - [Projects](#projects)
-  - [Roadmap](#roadmap)
   - [Contributing](#contributing)
 
 ---
 
 ## Overview
 
-Vakaros devices record sailing telemetry — GPS position, speed, heading, heel, VMG, and more — into compact binary `.vkx` log files. This project provides:
+Vakaros devices record sailing telemetry — GPS position, speed, orientation, and optional sensor readings — into compact binary `.vkx` log files. SailSight provides:
 
-- A **parser** that decodes the VKX binary format into structured data
-- A **REST API** that ingests, stores, and serves the telemetry
+- A **REST API** that validates uploads, ingests and stores telemetry, detects races, and calculates race analysis
 - A **Next.js UI** for interactive visualisation of sessions and races
+
+VKX decoding comes from the separately maintained [Vakaros.Vkx.Parser.NET](https://github.com/SCarlsen7757/Vakaros.Vkx.Parser.NET) NuGet package. SailSight accepts VKX 1.4 exports and reads the parser's SI properties; parser fixes belong in that package's repository.
 
 ---
 
@@ -49,15 +50,19 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 
 | Feature | Description |
 | --- | --- |
-| 📤 **File Upload** | Upload `.vkx` files via the API; duplicate detection via SHA-256 hash |
+| 📤 **File Upload** | Upload one VKX 1.4 file at a time, up to 200,000,000 bytes; SHA-256 duplicate detection per user |
 | 🏁 **Automatic Race Detection** | Races are extracted automatically from the timer events embedded in each session |
-| 🗺️ **Interactive Map** | GPS track rendered on a Leaflet map with course marks, start line (pin end / boat end) and leg overlays |
-| 📈 **Telemetry Charts** | Synced time-series charts for speed, VMG, and heel powered by Apache ECharts |
-| 🎛️ **Playback Instruments** | Heading, speed, VMG, and heel/angle gauges with scrubbing and playback |
-| ⏯️ **Playback Modes** | *Historical* mode shows full-race charts with a synced cursor; *Current* mode shows live-style gauges you can scrub through |
+| 🗺️ **Interactive Map** | Leaflet GPS track, speed heatmap, course marks/rounding radii, gates, and recorded start-line endpoints |
+| 📈 **Telemetry Charts** | ECharts for SOG, COG with optional heading, heel/trim, and recorded wind, speed-through-water, depth, temperature, load, and shift-angle heading when available |
+| 🎛️ **Playback Instruments** | Digital SOG/COG, boat heading, heel, and trim readings; independently toggle instruments and charts |
+| ⏯️ **Recorded Replay** | Scrub and play recordings at 0.5×–32× with synchronized map position, instrument readings, and chart playback cursors |
+| 🏁 **Course-leg Analysis** | Time-weighted speed and VMG toward race-assigned marks or gate midpoints, passing-side checks, and explicit uncertain/unreached outcomes |
+| 📍 **Course-aware Replay** | Select a leg to seek its approach; follow target highlighting and VMG-to-target readout/chart during playback |
 | ⛵ **Boats** | Register boats with name, sail number, and class; link them to sessions |
-| 📍 **Marks & Courses** | Define race-course marks and build ordered course legs; overlay them on any race map |
-| 🐳 **Self-hosted** | One `docker compose up` starts the database, API, and Web UI |
+| 📍 **Marks & Courses** | Define owned marks, rounding/gate legs, and assign courses to individual races |
+| 🐳 **Self-hosted** | Docker Compose starts the database, runs migrations, then starts the API and Web UI |
+
+See [recorded race analysis](docs/analysis/recorded-races.md) for calculation semantics and limitations. Planned capabilities are tracked in [GitHub feature issues](https://github.com/SCarlsen7757/sail-sight/issues?q=is%3Aissue%20is%3Aopen%20label%3Afeature).
 
 ---
 
@@ -124,9 +129,9 @@ The REST API uses URL-segment versioning (`/api/v1/...`). Each version has a ded
 The build pipeline auto-generates the frontend TypeScript types from this spec:
 
 ```
-dotnet build
+dotnet build SailSight.slnx
   └─► GenerateOpenApiDocuments       → SailSight.Api/OpenApi/SailSight.Api.json
-  └─► GenerateTypeScriptTypes        → SailSight.Web/src/lib/api-types.ts
+  └─► GenerateTypeScriptTypesV1      → SailSight.Web/src/lib/api-types.ts
         (runs: npm run gen:api)
 ```
 
@@ -134,8 +139,9 @@ The generated `api-types.ts` is consumed by [openapi-fetch](https://openapi-ts.d
 
 ### Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [Visual Studio 2022](https://visualstudio.microsoft.com/) with the **ASP.NET and web development** workload (includes Container Tools and Node.js support)
+- Docker with Compose and Linux-container support (for example Docker Desktop).
+- For host builds: a .NET 10 SDK and Node.js/npm. Run `npm ci` in `SailSight.Web` before `dotnet build SailSight.slnx`, which also invokes frontend type generation. Name the solution explicitly because the root also contains the Compose project. The Dockerfiles pin the container toolchains.
+- Visual Studio with support for the project's .NET SDK and Docker Compose is optional; command-line development is also supported.
 
 ### Running with Docker Compose
 
@@ -153,20 +159,15 @@ Use `docker-compose.ghcr.yml` together with this checkout's `deployment/` direct
 
 The database bind mount defaults to `./data/db` and covers `/home/postgres/pgdata`. Prepare an empty directory owned by the pinned image's `postgres` user for a fresh installation. Use PostgreSQL backup tools rather than copying a running database directory. Cloudflare Tunnel deployment is tracked separately in [issue #6](https://github.com/SCarlsen7757/sail-sight/issues/6).
 
-### Development (Visual Studio 2022)
+### Development
 
-The solution is configured for a **full Docker Compose dev loop** directly from Visual Studio. Everything — database, API, and web frontend — runs in Docker with live hot-reload.
+With the same `.env` as the quickstart, `docker compose up -d --build` also loads `docker-compose.override.yml`. This adds frontend source mounts/hot reload and loopback database/debugger ports. The base-only quickstart deliberately omits this override.
 
-**Prerequisites**
+**Visual Studio workflow**
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) running with Linux containers
-- Visual Studio 2022 with the **ASP.NET and web development** workload (Container Tools included)
-
-**Start the dev environment**
-
-1. Open `SailSight.slnx` in Visual Studio 2022.
-2. Set **docker-compose** as the startup project (it should be selected by default).
-3. Press **F5** — Visual Studio starts all three services and opens the web app in your browser.
+1. Open `SailSight.slnx` in a compatible Visual Studio installation with Container Tools.
+2. Set **docker-compose** as the startup project.
+3. Press **F5** to launch the configured services and web app. The migration service must finish before the API starts.
 
 | Service | URL / Port | Notes |
 | --------- | ----------- | ------- |
@@ -179,7 +180,7 @@ The solution is configured for a **full Docker Compose dev loop** directly from 
 
 | Layer | Behaviour |
 | ------- | ----------- |
-| **C# API** | Visual Studio Fast Mode — changes apply via .NET Hot Reload without a full Docker rebuild. For structural changes, rebuild with **Ctrl+Shift+B** and VS pushes the new binaries automatically. |
+| **C# API** | Visual Studio Container Tools provides the debug/Hot Reload workflow. Edits unsupported by Hot Reload require rebuilding/restarting the API. Plain Compose does not configure `dotnet watch`. |
 | **Next.js web** | True file-watch hot-reload — save any `.tsx` / `.ts` file and the browser refreshes instantly. No rebuild needed. |
 
 **When to rebuild Docker images**
@@ -192,9 +193,13 @@ docker compose build web
 docker compose build
 ```
 
+The development override keeps `/app/node_modules` in a named volume. Rebuilding the image does not replace an existing volume's contents: after dependency changes, run `docker compose exec web npm ci` in the running development stack and restart the web service (`docker compose restart web`).
+
 **Database migrations**
 
-Migrations are applied automatically on API startup. To add a new migration:
+Compose runs migrations and initial administrator bootstrap in the one-shot `migrate` service; the API uses a separate runtime database role and has `Database__AutoMigrate=false`. For host development, the `Localhost` launch profile permits automatic migrations unless disabled. `SKIP_DB_MIGRATION=true` suppresses database initialization during OpenAPI generation. See the [deployment guide](docs/security/implementation.md#local-setup) for credentials and initialization.
+
+To add a new migration:
 
 ```bash
 dotnet ef migrations add <MigrationName> --project SailSight.Api --startup-project SailSight.Api
@@ -206,14 +211,11 @@ dotnet ef migrations add <MigrationName> --project SailSight.Api --startup-proje
 
 ### Uploading a Session
 
-Use any HTTP client to `POST` a `.vkx` file to the API:
+1. Sign in and open **Upload**.
+2. Drop one `.vkx` file onto the upload area, or select it using the file picker. Only VKX 1.4 exports up to 200,000,000 bytes are accepted.
+3. On success, the session detail page opens with the detected races. Uploading the same file again as the same user returns a duplicate error.
 
-```bash
-curl -X POST http://localhost:8080/api/sessions/upload \
-     -F "file=@my-session.vkx"
-```
-
-The API parses the file, detects races, and returns a `SessionDetailDto` with all metadata.
+The underlying endpoint is `POST /api/v1/sessions` with multipart field `file`, returning `201 Created` and a `SessionDetailDto`. In MultiUser mode it requires an authenticated cookie session and a matching `X-CSRF-Token` header from the `sailsight.csrf` cookie. Mutating requests also require `Origin` matching the configured application origin. The browser UI handles these requirements; PAT/bearer authentication is not available.
 
 ### Managing Boats and Courses
 
@@ -221,19 +223,25 @@ Boats, marks, and courses can be managed via the REST API:
 
 | Resource | Endpoint |
 | --- | --- |
-| Boat Classes | `GET/POST /api/boatclasses`, `PUT/DELETE /api/boatclasses/{id}` |
-| Boats | `GET/POST /api/boats`, `PUT/DELETE /api/boats/{id}` |
-| Marks | `GET/POST /api/marks`, `PUT/DELETE /api/marks/{id}` |
-| Courses | `GET/POST /api/courses`, `PUT/DELETE /api/courses/{id}` |
-| Sessions | `GET /api/sessions`, `PATCH/DELETE /api/sessions/{id}` (link boat/course) |
+| Boat Classes | `GET/POST /api/v1/boat-classes`, `PUT/DELETE /api/v1/boat-classes/{id}` (writes require admin) |
+| Boats | `GET/POST /api/v1/Boats`, `PUT/DELETE /api/v1/Boats/{id}` |
+| Marks | `GET/POST /api/v1/Marks`, `PUT/DELETE /api/v1/Marks/{id}` |
+| Courses | `GET/POST /api/v1/Courses`, `PUT/DELETE /api/v1/Courses/{id}` |
+| Sessions | `GET /api/v1/sessions`, `PATCH/DELETE /api/v1/sessions/{id}` |
+| Races | `PATCH /api/v1/races/{raceId}` (assign a course) |
+
+Owners manage their boats, marks, courses, and sessions. Assigning a session course does not assign it to the session's races; set each race's course explicitly. For complete contracts, see the [generated OpenAPI document](SailSight.Api/OpenApi/SailSight.Api.json).
 
 ### Viewing a Race
 
 1. Navigate to **Sessions** in the web UI.
 2. Click a session to see its detail and list of detected races.
 3. Click a race to open the **Race Viewer**:
-   - The map shows the GPS track with course marks overlaid.
-   - Switch between **Historical** (full-race charts with synced cursor) and **Current** (gauge-style scrubbing) modes.
+   - Toggle gauges and charts independently and use the playback slider to inspect the recording.
+   - Assign a course to each race in **Edit session** to see course targets and leg analysis.
+   - Select a leg to seek its approach and inspect VMG to the active target.
+
+The separate **View session data** page currently loads only the first race's telemetry and uses the session's time bounds. It does not yet provide continuous telemetry for the entire session; sessions without races show no track there.
 
 ---
 
@@ -249,22 +257,11 @@ VKX files are decoded by the [Vakaros.Vkx.Parser.NET](https://github.com/SCarlse
 
 ---
 
-## Roadmap
-
-- [x] **Backend course-leg analysis** — time-weighted speed and VMG toward each race-assigned mark, GPS-derived port/starboard passing-side checks, gate crossings and gate-midpoint VMG, with explicit uncertain/unreached outcomes and calculation tests
-- [x] **Course-aware recorded replay** — per-leg summaries, target highlighting, and VMG-to-target readout/charts synchronized with playback of exported VKX recordings
-- [ ] **Performance benchmarks** — compare speed, VMG, and tacking angles across multiple sessions on the same course
-- [ ] **Polar diagram** — plot boat speed against true wind angle to build an empirical polar curve, if wind data is available
-- [ ] **Session comparison** — overlay two or more race tracks on the same map
-- [x] **Additional telemetry charts** — wind, speed-through-water, depth, temperature, load, and shift angles appear when present in the recording
-- [ ] **Additional telemetry gauges** — expose the additional recorded sensor channels in dedicated playback instruments
-- [ ] **Weather data** — fetch historic weather conditions (wind speed, wind direction, temperature, precipitation, cloud cover) from an external weather API and overlay them on race sessions
-
----
-
 ## Contributing
 
 Pull requests are welcome. For significant changes please open an issue first to discuss what you would like to change.
+
+Developer conventions and test commands are in [AGENTS.md](AGENTS.md). The [frontend reference](SailSight.Web/doc/DesignSpecification.md) describes the current UI; the [color reference](SailSight.Web/doc/ColourScheme.md) documents its theme tokens.
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/my-feature`)

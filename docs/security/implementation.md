@@ -1,6 +1,8 @@
-# Security and upgrade implementation
+# Security and deployment guide
 
-Implemented on `feature/frontend/rework`, starting from reviewed commit `41d76bd`. The branch was fetched and had no subsequent changes before implementation. Changes are intentionally breaking; start with a fresh development database. No release has been published.
+The behavior and setup sections describe the current implementation. The [historical verification](#historical-verification-2026-09-10) section preserves evidence from the September 10, 2026 security work on `feature/frontend/rework`, starting from reviewed commit `41d76bd`; it is not a current test or vulnerability report.
+
+Fresh installations run the tracked migrations. For existing installations, review the migrations for the version being deployed and back up data before upgrading. The original security work used a fresh disposable development database; this is not a blanket instruction to reset existing installations. The later [recorded-analysis migration](../analysis/recorded-races.md#upgrade-and-recalculation) preserves recordings and rebuilds derived results.
 
 ## Behavior
 
@@ -8,17 +10,18 @@ Implemented on `feature/frontend/rework`, starting from reviewed commit `41d76bd
 - Session/race boat and course assignments require ownership. Publication rejects foreign associations. Public boat and approved class browsing remain available.
 - Named team roles are validated. Owners appoint owners/administrators; administrators manage ordinary members. Security mutations use a PostgreSQL transaction advisory lock shared across teams and site administration, preventing concurrent final-owner/final-administrator removal. This deliberately serializes infrequent security changes across the installation.
 - Identity operation results are checked. Security stamps are validated on each authenticated request and rotated on administrative changes and recovery. Setup replacements invalidate earlier links; successful redemption prevents reuse. Invitation consumption, creation and role assignment commit together before sign-in.
+- Each MultiUser sign-in creates a persisted login session. Logout revokes that session, so a late response cannot restore its validity. Cookies renew through sliding expiration rather than every security-stamp check.
 - Deleting an account that owns sailing data or is a team's sole owner returns 409. Ownership foreign keys restrict deletion; the historical team creator is nullable. Initial administrator bootstrap runs only on an uninitialized installation. Notification streams revalidate account privileges and reconnect through authentication.
 - PAT authentication/endpoints and AI reports/UI/configuration/packages are removed. Migrations remove their persistence tables. Old configuration cannot re-enable these features.
-- Browser writes explicitly supply a CSRF header. Cookie-only writes and unsafe requests from other origins are rejected, including login/setup. CORS requires explicit configured origins. Login and invitation limits are separate and partitioned by trusted client IP.
+- Unsafe requests require `Origin` matching `Web:PublicBaseUrl`, including login/setup. Authenticated writes additionally require `X-CSRF-Token` matching the `sailsight.csrf` cookie, including in SingleUser mode where the principal is synthetic; the shared browser helpers supply it. CORS requires explicit configured origins. Login and invitation limits are separate and partitioned by trusted client IP.
 
 ## Uploads and pagination
 
-The file limit is **200,000,000 bytes**; the entire multipart envelope is limited to **201,048,576 bytes**. The UI, streaming proxy and API enforce these bounds. Only one file and bounded form fields are accepted. ASP.NET spools files above 64 KiB to temporary storage; the ingestion layer reuses that stream and does not create another whole-file byte buffer. Request disposal cleans the temporary file, including cancellation.
+The file limit is **200,000,000 bytes**; the entire multipart envelope is limited to **201,048,576 bytes**. The UI checks file size, the streaming proxy bounds request size, and the API enforces both. Only one file and no additional form fields are accepted. ASP.NET spools files above 64 KiB to temporary storage; the ingestion layer reuses that stream and does not create another whole-file byte buffer. Request disposal cleans the temporary file, including cancellation.
 
 Admission occurs before multipart model binding: one active ingestion per user, two globally. `Ingestion` configuration exposes `GlobalConcurrency`, `Records` (5,000,000), `Races` (10,000), and `UploadsPerHour` (20). These admission/rate limits target **one API instance**; multiple replicas require shared admission state before deployment.
 
-Validation runs before persistence and checks structure, required metadata, lengths, numbers, coordinates, timestamp ordering and duplicate sample keys. Parsing remains behind the existing parser interface. Inserts use batches of 2,000 in one transaction; cancellation interrupts parser reads. Ordered position processing replaces full-record scans for every race. Invalid, duplicate, oversized and exhausted requests return controlled 400/409/413/429 responses.
+Validation runs before persistence and checks structure, required metadata, lengths, numbers, coordinates, timestamp ordering and duplicate sample keys. Only VKX 1.4 is accepted; other versions return 400 `unsupported_vkx_version`. `VkxIngestionService` calls the separately maintained `Vakaros.Vkx.Parser.NET` NuGet package for decoding and maps its SI properties into storage. Inserts use batches of 2,000 in one transaction; cancellation interrupts parser reads. Ordered position processing replaces full-record scans for every race. Invalid, duplicate, oversized and exhausted requests return controlled 400/409/413/429 responses.
 
 Session pagination is preserved. Other collections return up to 100 records and expose `X-Next-Offset`; pass that value as `?offset=`. Telemetry returns up to 10,000 samples per channel with the same continuation convention. Offsets are bounded to 5,000,000. The shared browser helper follows continuations, preserving channel ordering. Telemetry windows must be finite, ordered and inside the session; negative race-relative time supports pre-start playback. Statistics aggregate in SQL.
 
@@ -29,6 +32,8 @@ Create an ignored `.env` containing independent strong `POSTGRES_PASSWORD` and `
 Run `docker compose -f docker-compose.yml up -d --build`, then open `http://localhost:8081`. This explicitly selects the localhost development profile. The default override adds the development loop; use it only when wanted. API and debugger/database exposures stay on loopback; database is not exposed by the base file.
 
 For host development, use `dotnet run --project SailSight.Api --launch-profile Localhost` with configured database credentials and bootstrap email. SingleUser additionally requires `Auth__Mode=SingleUser` and this explicit local profile. Startup rejects databases containing other users or their data even when automatic migration is disabled. Never switch a multi-user database into SingleUser.
+
+Host migrations run when `LocalProfile=true` and `Database:AutoMigrate` is enabled (default true), using `ConnectionStrings__Default`, which must then have migration privileges. Explicit `--migrate-only` execution requires `ConnectionStrings__Migration` and uses that connection instead. To retain a least-privileged runtime account, run the migration job first and disable runtime auto-migration. `SKIP_DB_MIGRATION=true` is a build-time OpenAPI escape hatch, not the normal deployment migration setting. Compose sets `Database__AutoMigrate=false` and uses the one-shot migration service.
 
 The database image derives from the digest-pinned PostgreSQL 18.6 / TimescaleDB 2.30.0 image. Its actual `PGDATA` is `/home/postgres/pgdata/data`; storage mounts cover `/home/postgres/pgdata`. The derived image excludes the unused `pgbackrest_exporter` and `pgbouncer_exporter` monitoring binaries. Standalone PostgreSQL/TimescaleDB does not invoke them. The deployment does not provide their monitoring endpoints.
 
@@ -44,19 +49,23 @@ HTTP shared origins fail startup; the entry rejects HTTP requests for an HTTPS a
 
 ## Dependencies and checks
 
-Exact direct package versions are recorded in [resolved-dependencies.json](resolved-dependencies.json), with package-lock.json authoritative for npm transitive resolution. Container base digests are in each Dockerfile; [action-pins.json](action-pins.json) records third-party Action commits. Targets include Next 16.3.4, React 19.3.0, Node 26.8.2, ECharts 6.1.0, Tailwind 4.3.3, PostCSS 8.5.28, .NET runtime/framework 10.0.12 and SDK 10.0.401. Local host verification used SDK 10.0.400/Node 24.19.0; container builds use the target versions.
+Current package versions are defined by the project files and `SailSight.Web/package.json`, with `package-lock.json` authoritative for npm resolution. Container base digests are in the Dockerfiles and third-party Action commits are in the workflow files. [resolved-dependencies.json](resolved-dependencies.json) and [action-pins.json](action-pins.json) are snapshots from the original security review, not automatically maintained inventories.
 
-TypeScript 5.9.3, ESLint 9.39.5 and the parent-resolved Microsoft.OpenApi 2.x are compatibility exceptions. No forced peer overrides were added. Tailwind tokens/dark mode now use CSS configuration; ESLint uses its CLI and flat configuration. CI runs type checking separately, checks generated client drift and advisories, and scans all three containers. Dependabot schedules updates. Only release jobs have publishing permissions.
+TypeScript 5.9.3, ESLint 9.39.5 and the parent-resolved Microsoft.OpenApi 2.x are compatibility exceptions. Tailwind tokens/dark mode use CSS configuration; ESLint uses its CLI and flat configuration. CI runs type checking separately, checks generated client drift and advisories, and scans the API, web, and database containers. Dependabot schedules updates. Only release jobs have publishing permissions; main-branch container builds do not push images.
 
 Verification commands: `dotnet test SailSight.Api.Tests/SailSight.Api.Tests.csproj -p:SkipTypeScriptGeneration=true`, `npm run gen:api`, `npm run typecheck`, `npm run lint`, frontend/API container builds, `npm audit`, transitive NuGet audit and Trivy image scans. Runtime regression scripts are in `scripts/security-integration.py`, `scripts/upload-boundary.py`, and `scripts/ingestion-workload.py`; they create disposable data and require the documented local test environment variables/files in their source. Never target a production database.
 
-The implementation report's final verification results are recorded in [verification.json](verification.json). All 30 unit tests, the runtime regression suite, type checking, generated clients and container builds passed. Lint reports zero errors and 112 legacy warnings. The exact 200 MB upload succeeded in 9.77 seconds; one extra byte and excessive race/record budgets returned 413. A failure after the first session insert was verified to roll back the transaction.
+## Historical verification (2026-09-10)
 
-The full container scans found no high/critical advisories. The API image retains 6 medium and 5 low package findings; the database retains 156 medium and 80 low package findings. The web image has none. Every remaining finding, including package/version, severity, fix availability and advisory URL, is recorded in [container-advisories.json](container-advisories.json). npm and transitive API/test NuGet audits reported no vulnerabilities. The web base's OpenSSL finding was fixed with `libcrypto3`/`libssl3` 3.5.8-r0 or later; excluding the unused database monitoring exporters removed 88 high/critical package findings.
+The following results describe the original security implementation only. Rerun the relevant checks against the checkout and deployment under review before treating them as current evidence. Targets at that time included Next 16.3.4, React 19.3.0, Node 26.8.2, ECharts 6.1.0, Tailwind 4.3.3, PostCSS 8.5.28, .NET runtime/framework 10.0.12 and SDK 10.0.401; host verification used SDK 10.0.400/Node 24.19.0.
 
-Browser-driven visual checks of charts, maps, forms/navigation and light/dark appearance remain a release gate: the session's browser tool reported no available browser. HTTPS ingress and certificate deployment also require validation in the intended private-network environment before sharing. The newly added GitHub workflow has been checked locally but has not run on GitHub because these changes have not been pushed.
+The implementation report's final verification results are recorded in [verification.json](verification.json). All 30 unit tests, the runtime regression suite, type checking, generated clients and container builds passed. Lint reported zero errors and 112 legacy warnings. The exact 200 MB upload succeeded in 9.77 seconds; one extra byte and excessive race/record budgets returned 413. A failure after the first session insert was verified to roll back the transaction.
 
-Disposable test containers were stopped after verification; database volumes were preserved. Raw local logs and scanner reports are retained in the ignored `.security-evidence/` directory. Temporary image archives were removed.
+Those container scans found no high/critical advisories. The API image retained 6 medium and 5 low package findings; the database retained 156 medium and 80 low package findings. The web image had none. Findings at that time, including package/version, severity, fix availability and advisory URL, are recorded in [container-advisories.json](container-advisories.json). npm and transitive API/test NuGet audits reported no vulnerabilities. The web base's OpenSSL finding was fixed with `libcrypto3`/`libssl3` 3.5.8-r0 or later; excluding the unused database monitoring exporters removed 88 high/critical package findings.
+
+At that review, browser-driven visual checks and hosted workflow runs had not been completed. The repository now contains a Playwright E2E suite and [screenshot workflow](../screenshots/README.md); use their actual results for the revision under review. HTTPS ingress and certificate deployment still require validation in the intended environment before sharing.
+
+At the end of that verification, disposable test containers were stopped and database volumes preserved. Raw logs and scanner reports were kept locally in the ignored `.security-evidence/` directory; they are not distributed with the repository. Temporary image archives were removed.
 
 ## Dependabot automation
 
@@ -73,6 +82,8 @@ After merging configuration changes to `main`, inspect the next Dependabot updat
 ## Follow-up work
 
 Recovery references in these issues point to reviewed commit `41d76bd`:
+
+GitHub is authoritative for current scope and status. Files in `follow-ups/` are historical issue drafts retained for context.
 
 1. [User-provided AI credentials and race reports #3](https://github.com/SCarlsen7757/sail-sight/issues/3)
 2. [Personal access tokens #4](https://github.com/SCarlsen7757/sail-sight/issues/4)
