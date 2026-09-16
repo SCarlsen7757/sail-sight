@@ -17,3 +17,9 @@ Committed fixtures are public forever (they stay in git history even if deleted)
 5. **Manifest.** Add an entry to `manifest.json`. Place course marks near the track (inspect the race's position telemetry) with `activeFrom` covering the recording date (the seeder uses 1 January of `course.year`).
 
 If a file listed in the manifest is missing, `npm run seed` stops and names it.
+
+## Synthetic analysis scenarios
+
+`e2e/support/analysis-scenario.ts` constructs small VKX recordings for deterministic course-analysis tests and the `leg-analysis` screenshots. These generated scenarios are separate from the real-recording manifest and contain no personal track data.
+
+The standard seeder targets the disposable E2E stack by default. To seed a development instance deliberately, set `SAILSIGHT_URL`, `SAILSIGHT_ADMIN_EMAIL`, and `SAILSIGHT_ADMIN_PASSWORD` for that instance. Seeding creates users, teams, courses, boats, and sessions; do not target production. See [AGENTS.md](../../../AGENTS.md#tests) for the stack lifecycle and rate-limit settings.

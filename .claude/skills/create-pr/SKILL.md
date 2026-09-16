@@ -22,7 +22,7 @@ existing style: `feature/<scope>/<short-description>`.
 ## 2. Verify the work builds and tests pass
 
 ```bash
-dotnet build                 # also regenerates OpenAPI spec + api-types.ts
+dotnet build SailSight.slnx   # also regenerates OpenAPI spec + api-types.ts
 dotnet test SailSight.Api.Tests
 cd SailSight.Web && npm run lint && npm run typecheck && npm run build
 ```
@@ -37,7 +37,7 @@ npm run screenshots          # only if the UI changed; commit the updated docs/s
 npm run e2e:down
 ```
 
-If `dotnet build` changed `SailSight.Api/OpenApi/SailSight.Api.json` or
+If `dotnet build SailSight.slnx` changed `SailSight.Api/OpenApi/SailSight.Api.json` or
 `SailSight.Web/src/lib/api-types.ts`, **commit those files** — they are generated but tracked, and
 CI builds from the committed spec.
 
@@ -78,7 +78,7 @@ only dimension cue, so applying the right combination matters:
 | `feature` | New capability, or an improvement to an existing one |
 | `performance` | Speed, memory, query cost, or render cost |
 | `refactor` | Internal restructuring with no behaviour change |
-| `documentation` | README, VKX format spec, or code comments |
+| `documentation` | README, guides, integration documentation, or code comments (the VKX format spec lives in the parser repository) |
 | `chore` | Build, tooling, dependencies, or cleanup |
 
 `feature` deliberately covers both brand-new capabilities and improvements to existing ones — the
@@ -105,7 +105,7 @@ Map from the changed paths:
 | `SailSight.Web/**` | `web` |
 | `SailSight.Shared/**` | `shared` |
 | `SailSight.Api/Migrations/**`, `Data/Migrations/**`, hypertables, EF model | `database` |
-| `SailSight.Api/Auth/**`, `(auth)` routes, Identity, PAT, invitations, teams | `auth` |
+| `SailSight.Api/Auth/**`, `(auth)` routes, Identity, invitations, teams | `auth` |
 | `.github/**`, `Dockerfile*`, `docker-compose*.yml` | `infra` |
 
 The teal labels are the ones that need judgement, because a path match alone doesn't settle them:
@@ -130,7 +130,7 @@ blue, and if it's both it's teal.
 
 | Label | When |
 | --- | --- |
-| `breaking change` | A new API version, or a migration that isn't backward-compatible. Nothing computes the version automatically — this label is the signal to you that the next tag needs a major bump. |
+| `breaking change` | A new API version or an incompatible API/schema/flow change. After stable v1 this signals a major bump; before v1 follow `AGENTS.md`. Nothing computes the version automatically. |
 | `dependencies` | Dependency bumps (this is Dependabot's default label name) |
 | `blocked` | Waiting on external work — don't merge |
 | `needs info` | Waiting on more detail before it can proceed |
@@ -171,12 +171,12 @@ If you add or rename a type label, update `.github/release.yml` in the same PR.
 | Move `/api/v1` to `/api/v2` | `feature` `api` `shared` `breaking change` |
 | Bump Vakaros.Vkx.Parser.NET and adapt ingestion | `chore` `dependencies` `api` `parser` |
 | Redeem-invitation page won't submit | `bug` `web` `auth` |
-| Rotate PAT hashing to a stronger algorithm | `security` `api` `auth` `database` |
+| Change persisted login-session revocation | `security` `api` `auth` `database` |
 
 ## Releasing
 
-Merging never releases anything. A merge to `main` publishes rolling `main` and `sha-<short>`
-image tags; `latest` is untouched. Cutting a release is one action:
+Merging never releases anything. A merge to `main` builds both container images with `push: false`;
+it does not publish rolling images or change `latest`. Cutting a release is one action:
 
 ```bash
 git tag v1.2.3 && git push origin v1.2.3
@@ -193,8 +193,9 @@ since the last tag and let the labels decide:
 git log $(git describe --tags --abbrev=0)..main --oneline
 ```
 
-Any `breaking change` since the last tag means a major bump; any `feature` means minor; otherwise
-patch. A prerelease tag (`v1.2.3-rc.1`) publishes its exact version but deliberately does **not**
+After stable v1, a `breaking change` means a major bump; a `feature` means minor; otherwise
+patch. Before v1, follow the pre-v1 policy in `AGENTS.md`; breaking changes do not by themselves
+require declaring a stable v1 release. A prerelease tag (`v1.2.3-rc.1`) publishes its exact version but deliberately does **not**
 move `latest`.
 
 ## Note on `parser`
