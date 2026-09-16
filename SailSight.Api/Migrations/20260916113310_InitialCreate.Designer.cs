@@ -12,8 +12,8 @@ using SailSight.Api.Data;
 namespace SailSight.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260915205603_ReliableRaceAnalysis")]
-    partial class ReliableRaceAnalysis
+    [Migration("20260916113310_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

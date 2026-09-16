@@ -80,44 +80,6 @@ namespace SailSight.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "marks",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    owner_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "text", nullable: false),
-                    active_from = table.Column<DateOnly>(type: "date", nullable: false),
-                    active_until = table.Column<DateOnly>(type: "date", nullable: true),
-                    latitude = table.Column<double>(type: "double precision", nullable: false),
-                    longitude = table.Column<double>(type: "double precision", nullable: false),
-                    default_rounding_radius_meters = table.Column<double>(type: "double precision", nullable: false),
-                    description = table.Column<string>(type: "text", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_marks", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "personal_access_tokens",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "text", nullable: false),
-                    token_hash = table.Column<string>(type: "text", nullable: false),
-                    token_prefix = table.Column<string>(type: "text", nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    last_used_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    revoked_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_personal_access_tokens", x => x.id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "roles",
                 columns: table => new
                 {
@@ -129,20 +91,6 @@ namespace SailSight.Api.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_roles", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "teams",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "text", nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    created_by_user_id = table.Column<Guid>(type: "uuid", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_teams", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
@@ -170,76 +118,6 @@ namespace SailSight.Api.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_users", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "boats",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    owner_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "text", nullable: false),
-                    sail_number = table.Column<string>(type: "text", nullable: true),
-                    boat_class_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    description = table.Column<string>(type: "text", nullable: true),
-                    is_public = table.Column<bool>(type: "boolean", nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_boats", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_boats_boat_classes_boat_class_id",
-                        column: x => x.boat_class_id,
-                        principalTable: "boat_classes",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "courses",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    owner_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    name = table.Column<string>(type: "text", nullable: false),
-                    year = table.Column<int>(type: "integer", nullable: false),
-                    description = table.Column<string>(type: "text", nullable: true),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    start_line_source = table.Column<string>(type: "text", nullable: false),
-                    start_mark1_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    start_mark2_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    finish_line_source = table.Column<string>(type: "text", nullable: false),
-                    finish_mark1_id = table.Column<Guid>(type: "uuid", nullable: true),
-                    finish_mark2_id = table.Column<Guid>(type: "uuid", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_courses", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_courses_marks_finish_mark1_id",
-                        column: x => x.finish_mark1_id,
-                        principalTable: "marks",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_courses_marks_finish_mark2_id",
-                        column: x => x.finish_mark2_id,
-                        principalTable: "marks",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_courses_marks_start_mark1_id",
-                        column: x => x.start_mark1_id,
-                        principalTable: "marks",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
-                    table.ForeignKey(
-                        name: "FK_courses_marks_start_mark2_id",
-                        column: x => x.start_mark2_id,
-                        principalTable: "marks",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -291,60 +169,98 @@ namespace SailSight.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "team_invites",
+                name: "boats",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
-                    team_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    invited_user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    email = table.Column<string>(type: "text", nullable: false),
-                    role = table.Column<string>(type: "text", nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    accepted_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
-                    declined_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                    owner_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "text", nullable: false),
+                    sail_number = table.Column<string>(type: "text", nullable: true),
+                    boat_class_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    description = table.Column<string>(type: "text", nullable: true),
+                    is_public = table.Column<bool>(type: "boolean", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_team_invites", x => x.id);
+                    table.PrimaryKey("PK_boats", x => x.id);
                     table.ForeignKey(
-                        name: "FK_team_invites_teams_team_id",
-                        column: x => x.team_id,
-                        principalTable: "teams",
+                        name: "FK_boats_boat_classes_boat_class_id",
+                        column: x => x.boat_class_id,
+                        principalTable: "boat_classes",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_team_invites_users_invited_user_id",
-                        column: x => x.invited_user_id,
+                        name: "FK_boats_users_owner_user_id",
+                        column: x => x.owner_user_id,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "login_sessions",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_login_sessions", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_login_sessions_users_user_id",
+                        column: x => x.user_id,
                         principalTable: "users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "team_members",
+                name: "marks",
                 columns: table => new
                 {
-                    team_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    role = table.Column<int>(type: "integer", nullable: false),
-                    joined_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    owner_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "text", nullable: false),
+                    active_from = table.Column<DateOnly>(type: "date", nullable: false),
+                    active_until = table.Column<DateOnly>(type: "date", nullable: true),
+                    latitude = table.Column<double>(type: "double precision", nullable: false),
+                    longitude = table.Column<double>(type: "double precision", nullable: false),
+                    default_rounding_radius_meters = table.Column<double>(type: "double precision", nullable: false),
+                    description = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_team_members", x => new { x.team_id, x.user_id });
+                    table.PrimaryKey("PK_marks", x => x.id);
                     table.ForeignKey(
-                        name: "FK_team_members_teams_team_id",
-                        column: x => x.team_id,
-                        principalTable: "teams",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_team_members_users_user_id",
-                        column: x => x.user_id,
+                        name: "FK_marks_users_owner_user_id",
+                        column: x => x.owner_user_id,
                         principalTable: "users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "teams",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "text", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    created_by_user_id = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_teams", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_teams_users_created_by_user_id",
+                        column: x => x.created_by_user_id,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -433,6 +349,115 @@ namespace SailSight.Api.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "courses",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    owner_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    name = table.Column<string>(type: "text", nullable: false),
+                    year = table.Column<int>(type: "integer", nullable: false),
+                    description = table.Column<string>(type: "text", nullable: true),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    start_line_source = table.Column<string>(type: "text", nullable: false),
+                    start_mark1_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    start_mark2_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    finish_line_source = table.Column<string>(type: "text", nullable: false),
+                    finish_mark1_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    finish_mark2_id = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_courses", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_courses_marks_finish_mark1_id",
+                        column: x => x.finish_mark1_id,
+                        principalTable: "marks",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_courses_marks_finish_mark2_id",
+                        column: x => x.finish_mark2_id,
+                        principalTable: "marks",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_courses_marks_start_mark1_id",
+                        column: x => x.start_mark1_id,
+                        principalTable: "marks",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_courses_marks_start_mark2_id",
+                        column: x => x.start_mark2_id,
+                        principalTable: "marks",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_courses_users_owner_user_id",
+                        column: x => x.owner_user_id,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "team_invites",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    team_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    invited_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    email = table.Column<string>(type: "text", nullable: false),
+                    role = table.Column<string>(type: "text", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    expires_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    accepted_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    declined_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_team_invites", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_team_invites_teams_team_id",
+                        column: x => x.team_id,
+                        principalTable: "teams",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_team_invites_users_invited_user_id",
+                        column: x => x.invited_user_id,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "team_members",
+                columns: table => new
+                {
+                    team_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    role = table.Column<int>(type: "integer", nullable: false),
+                    joined_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_team_members", x => new { x.team_id, x.user_id });
+                    table.ForeignKey(
+                        name: "FK_team_members_teams_team_id",
+                        column: x => x.team_id,
+                        principalTable: "teams",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_team_members_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "course_legs",
                 columns: table => new
                 {
@@ -466,7 +491,7 @@ namespace SailSight.Api.Migrations
                         column: x => x.mark_id,
                         principalTable: "marks",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -504,6 +529,12 @@ namespace SailSight.Api.Migrations
                         principalTable: "courses",
                         principalColumn: "id",
                         onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_sessions_users_owner_user_id",
+                        column: x => x.owner_user_id,
+                        principalTable: "users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -649,7 +680,9 @@ namespace SailSight.Api.Migrations
                     sailed_distance_meters = table.Column<double>(type: "double precision", nullable: false),
                     max_speed_over_ground = table.Column<float>(type: "real", nullable: false),
                     notes = table.Column<string>(type: "text", nullable: true),
-                    analysis_status = table.Column<string>(type: "text", nullable: false)
+                    analysis_status = table.Column<string>(type: "text", nullable: false),
+                    analysis_reason = table.Column<string>(type: "text", nullable: true),
+                    analysis_revision = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -782,13 +815,18 @@ namespace SailSight.Api.Migrations
                     race_id = table.Column<Guid>(type: "uuid", nullable: false),
                     course_leg_id = table.Column<Guid>(type: "uuid", nullable: false),
                     leg_index = table.Column<int>(type: "integer", nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false),
-                    exited_previous_mark_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    entered_current_mark_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    sailed_distance_meters = table.Column<double>(type: "double precision", nullable: false),
-                    average_speed_over_ground = table.Column<float>(type: "real", nullable: false),
-                    average_velocity_made_good = table.Column<float>(type: "real", nullable: false),
-                    max_speed_over_ground = table.Column<float>(type: "real", nullable: false)
+                    status = table.Column<string>(type: "text", nullable: false),
+                    reason = table.Column<string>(type: "text", nullable: true),
+                    exited_previous_mark_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    entered_current_mark_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    exited_current_mark_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    target_latitude = table.Column<double>(type: "double precision", nullable: false),
+                    target_longitude = table.Column<double>(type: "double precision", nullable: false),
+                    target_type = table.Column<string>(type: "text", nullable: false),
+                    sailed_distance_meters = table.Column<double>(type: "double precision", nullable: true),
+                    average_speed_over_ground = table.Column<float>(type: "real", nullable: true),
+                    average_velocity_made_good = table.Column<float>(type: "real", nullable: true),
+                    max_speed_over_ground = table.Column<float>(type: "real", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -798,40 +836,11 @@ namespace SailSight.Api.Migrations
                         column: x => x.course_leg_id,
                         principalTable: "course_legs",
                         principalColumn: "id",
-                        onDelete: ReferentialAction.Restrict);
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_race_leg_performances_races_race_id",
                         column: x => x.race_id,
                         principalTable: "races",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "race_summary_reports",
-                columns: table => new
-                {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    session_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    race_number = table.Column<int>(type: "integer", nullable: false),
-                    race_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    content = table.Column<string>(type: "text", nullable: false),
-                    model = table.Column<string>(type: "text", nullable: false),
-                    context_hash = table.Column<string>(type: "text", nullable: false),
-                    generated_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_race_summary_reports", x => x.id);
-                    table.ForeignKey(
-                        name: "FK_race_summary_reports_races_race_id",
-                        column: x => x.race_id,
-                        principalTable: "races",
-                        principalColumn: "id");
-                    table.ForeignKey(
-                        name: "FK_race_summary_reports_sessions_session_id",
-                        column: x => x.session_id,
-                        principalTable: "sessions",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -867,9 +876,10 @@ namespace SailSight.Api.Migrations
                 column: "owner_user_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_course_legs_course_id",
+                name: "IX_course_legs_course_id_sort_order",
                 table: "course_legs",
-                column: "course_id");
+                columns: new[] { "course_id", "sort_order" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_course_legs_gate_mark_id",
@@ -933,21 +943,15 @@ namespace SailSight.Api.Migrations
                 column: "session_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_login_sessions_user_id",
+                table: "login_sessions",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_marks_owner_user_id_name_active_from",
                 table: "marks",
                 columns: new[] { "owner_user_id", "name", "active_from" },
                 unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_personal_access_tokens_token_hash",
-                table: "personal_access_tokens",
-                column: "token_hash",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_personal_access_tokens_user_id",
-                table: "personal_access_tokens",
-                column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_positions_session_id",
@@ -960,20 +964,9 @@ namespace SailSight.Api.Migrations
                 column: "course_leg_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_race_leg_performances_race_id",
+                name: "IX_race_leg_performances_race_id_leg_index",
                 table: "race_leg_performances",
-                column: "race_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_race_summary_reports_race_id",
-                table: "race_summary_reports",
-                column: "race_id",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_race_summary_reports_session_id_race_number",
-                table: "race_summary_reports",
-                columns: new[] { "session_id", "race_number" },
+                columns: new[] { "race_id", "leg_index" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -1124,16 +1117,13 @@ namespace SailSight.Api.Migrations
                 name: "load_readings");
 
             migrationBuilder.DropTable(
-                name: "personal_access_tokens");
+                name: "login_sessions");
 
             migrationBuilder.DropTable(
                 name: "positions");
 
             migrationBuilder.DropTable(
                 name: "race_leg_performances");
-
-            migrationBuilder.DropTable(
-                name: "race_summary_reports");
 
             migrationBuilder.DropTable(
                 name: "race_timer_events");
@@ -1187,9 +1177,6 @@ namespace SailSight.Api.Migrations
                 name: "roles");
 
             migrationBuilder.DropTable(
-                name: "users");
-
-            migrationBuilder.DropTable(
                 name: "sessions");
 
             migrationBuilder.DropTable(
@@ -1203,6 +1190,9 @@ namespace SailSight.Api.Migrations
 
             migrationBuilder.DropTable(
                 name: "marks");
+
+            migrationBuilder.DropTable(
+                name: "users");
         }
     }
 }

@@ -12,11 +12,11 @@ Analysis stops at the first unreached, wrong-side, or uncertain target. Earlier 
 
 Approach duration runs from the start gun (first leg) or previous mark exit to target entry. Rounding intervals are separate. Gate crossing both ends the approach and starts the next leg. Distance follows the recorded track; average speed and VMG use time-weighted trapezoidal integration with interpolated boundary samples. All calculations use SI values and COG, not heading.
 
-## Upgrade and recalculation
+## Recalculation
 
-The ReliableRaceAnalysis migration discards only old derived leg results, makes metrics and boundary timestamps nullable, and adds outcome reasons, target geometry, and an analysis revision. Uploaded sessions, telemetry, and courses are preserved. At normal API startup, a sequential backfill rebuilds outdated results before requests are served; migration-only and OpenAPI generation skip it. Failed races are logged, unavailable, and retried on next startup. Large existing installations can therefore take longer to start on the first upgrade.
+Leg results are derived data stamped with an analysis revision. At normal API startup, a sequential backfill rebuilds every race whose revision is outdated before requests are served; migration-only runs and OpenAPI generation skip it. Failed races are logged, unavailable, and retried on the next startup. Installations holding many races can therefore take longer to start after a revision bump.
 
-Course assignment/removal and relevant course/mark edits invalidate results before recalculation. No database reset is required. Verify both fresh migrations and an upgrade from the preceding migration when changing this schema.
+Course assignment/removal and relevant course/mark edits invalidate results before recalculation; uploaded sessions and telemetry are never touched. When changing calculation semantics, raise the revision so existing results are rebuilt rather than migrated. Verify the fresh-database path after any schema change.
 
 ## Replay
 
