@@ -15,6 +15,7 @@ export interface RaceMapProps {
   positions: NormalizedPosition[] | null;
   race: RaceDetail | null;
   legs?: CourseLeg[];
+  activeCourseLegId?: string;
   startLine?: { pin?: { lat: number; lon: number }; boat?: { lat: number; lon: number } };
   playbackPosition?: { lat: number; lon: number; cogDeg: number } | null;
   preRacePositions?: NormalizedPosition[] | null;

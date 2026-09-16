@@ -20,7 +20,7 @@ export function analysisRecording(start = Date.now()) {
   rows.push(timer(60, 4)); return Buffer.concat(rows);
 }
 
-export async function analysisScenario(api: APIRequestContext) {
+export async function analysisScenario(api: APIRequestContext, options: { name?: string; start?: number } = {}) {
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const json = async <T = { id: string }>(response: Awaited<ReturnType<APIRequestContext["get"]>>) => {
     if (!response.ok()) throw new Error(`${response.status()} ${await response.text()}`);
@@ -31,9 +31,9 @@ export async function analysisScenario(api: APIRequestContext) {
     const mark = await json(await api.post('/api/v1/marks', { data: { name: `Analysis ${suffix} ${x} ${y}`, activeFrom: '2026-01-01', ...analysisPosition(x, y), defaultRoundingRadiusMeters: 20 } }));
     marks.push(mark.id);
   }
-  const body = { name: `Analysis ${suffix}`, year: 2026, legs: [0, 2].map((i, index) => ({ markId: marks[i], gateMarkId: marks[i + 1], legType: 'Gate', passingSide: 'Port', legName: `Gate ${index + 1}` })) };
+  const body = { name: options.name ?? `Analysis ${suffix}`, year: 2026, legs: [0, 2].map((i, index) => ({ markId: marks[i], gateMarkId: marks[i + 1], legType: 'Gate', passingSide: 'Port', legName: `Gate ${index + 1}` })) };
   const course = await json(await api.post('/api/v1/courses', { data: body }));
-  const session = await json<components["schemas"]["SessionDetailDto"]>(await api.post('/api/v1/sessions', { multipart: { file: { name: 'synthetic-analysis.vkx', mimeType: 'application/octet-stream', buffer: analysisRecording() } } }));
+  const session = await json<components["schemas"]["SessionDetailDto"]>(await api.post('/api/v1/sessions', { multipart: { file: { name: 'synthetic-analysis.vkx', mimeType: 'application/octet-stream', buffer: analysisRecording(options.start) } } }));
   const raceId = session.races[0].id as string;
   const raceUrl = `/api/v1/races/${raceId}`;
   await json(await api.patch(raceUrl, { data: { courseId: course.id } }));

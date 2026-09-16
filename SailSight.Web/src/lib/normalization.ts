@@ -2,7 +2,7 @@ import { n, NormalizedPosition, NormalizedWind, NormalizedStw, NormalizedDepth, 
 import type { Position, Wind, SpeedThroughWater, Depth, Temperature, Load, ShiftAngle } from "./schemas";
 import { sgSmooth, sgSmoothAngularRad, sgSmoothQuaternions } from "./downsampling";
 
-export function normalizePositions(pos: Position[], hz: number): NormalizedPosition[] {
+export function normalizePositions(pos: Position[], hz: number, smooth = true): NormalizedPosition[] {
   if (pos.length === 0) return [];
 
   const raw = pos.map(p => ({
@@ -17,7 +17,7 @@ export function normalizePositions(pos: Position[], hz: number): NormalizedPosit
     qZ: n(p.quaternionZ),
   }));
 
-  if (raw.length <= 5) return raw;
+  if (!smooth || raw.length <= 5) return raw;
 
   const sogWindow = Math.max(5, Math.round(1.5 * hz) | 1);
   const orientationWindow = Math.max(5, Math.round(5.0 * hz) | 1);

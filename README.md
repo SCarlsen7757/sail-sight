@@ -1,6 +1,6 @@
 # SailSight
 
-A self-hosted sailing telemetry analysis tool for [Vakaros](https://vakaros.com/) devices. Upload your `.vkx` log files, explore GPS tracks on an interactive map, and review race telemetry through live playback and historical charts — with multi-user accounts and team sharing.
+A self-hosted sailing telemetry analysis tool for [Vakaros](https://vakaros.com/) devices. Upload your `.vkx` log files, explore GPS tracks on an interactive map, and review race telemetry through recorded playback and historical charts — with multi-user accounts and team sharing.
 
 > **User management is admin-managed.** There is no public sign-up, password reset, email verification, or social login. The first admin is bootstrapped from environment variables; the admin then creates users and shares a one-time setup URL with each new user out-of-band (Slack/SMS/in-person).
 >
@@ -53,7 +53,7 @@ Vakaros devices record sailing telemetry — GPS position, speed, heading, heel,
 | 🏁 **Automatic Race Detection** | Races are extracted automatically from the timer events embedded in each session |
 | 🗺️ **Interactive Map** | GPS track rendered on a Leaflet map with course marks, start line (pin end / boat end) and leg overlays |
 | 📈 **Telemetry Charts** | Synced time-series charts for speed, VMG, and heel powered by Apache ECharts |
-| 🎛️ **Live Gauges** | Heading, speed, VMG, and heel/angle gauges with scrubbing and playback |
+| 🎛️ **Playback Instruments** | Heading, speed, VMG, and heel/angle gauges with scrubbing and playback |
 | ⏯️ **Playback Modes** | *Historical* mode shows full-race charts with a synced cursor; *Current* mode shows live-style gauges you can scrub through |
 | ⛵ **Boats** | Register boats with name, sail number, and class; link them to sessions |
 | 📍 **Marks & Courses** | Define race-course marks and build ordered course legs; overlay them on any race map |
@@ -252,7 +252,7 @@ VKX files are decoded by the [Vakaros.Vkx.Parser.NET](https://github.com/SCarlse
 ## Roadmap
 
 - [x] **Backend course-leg analysis** — time-weighted speed and VMG toward each race-assigned mark, GPS-derived port/starboard passing-side checks, gate crossings and gate-midpoint VMG, with explicit uncertain/unreached outcomes and calculation tests
-- [ ] **Course-aware recorded replay** — per-leg summaries, target highlighting, and VMG-to-target readout/charts synchronized with playback of exported VKX recordings
+- [x] **Course-aware recorded replay** — per-leg summaries, target highlighting, and VMG-to-target readout/charts synchronized with playback of exported VKX recordings
 - [ ] **Performance benchmarks** — compare speed, VMG, and tacking angles across multiple sessions on the same course
 - [ ] **Polar diagram** — plot boat speed against true wind angle to build an empirical polar curve, if wind data is available
 - [ ] **Session comparison** — overlay two or more race tracks on the same map

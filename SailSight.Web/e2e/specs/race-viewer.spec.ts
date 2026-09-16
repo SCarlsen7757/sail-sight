@@ -18,12 +18,12 @@ test.describe("race viewer", () => {
     const start = Number(await scrubber.inputValue());
 
     await page.getByLabel("Playback speed").selectOption("32");
-    await page.getByRole("button", { name: "Play" }).click();
+    await page.getByRole("button", { name: "Play", exact: true }).click();
     await expect(page.getByRole("button", { name: "Pause" })).toBeVisible();
     await expect.poll(async () => Number(await scrubber.inputValue())).toBeGreaterThan(start + 5);
 
     await page.getByRole("button", { name: "Pause" }).click();
-    await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Play", exact: true })).toBeVisible();
   });
 
   test("scrubbing updates the gauges", async ({ page }) => {
