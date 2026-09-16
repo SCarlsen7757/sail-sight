@@ -24,11 +24,14 @@ public class PerformanceController(AppDbContext db, SessionAuthorizer sessionAut
         var sessionObj = await db.Races
             .AsNoTracking()
             .Where(r => r.Id == raceId)
-            .Select(r => new { r.SessionId })
+            .Select(r => new { r.SessionId, r.AnalysisRevision, r.AnalysisStatus })
             .FirstOrDefaultAsync(ct);
         if (sessionObj == null) return NotFound();
 
         if (!await sessionAuth.CanReadAsync(sessionObj.SessionId, ct)) return NotFound();
+
+        if (sessionObj.AnalysisRevision != Services.RaceLegAnalysisService.CurrentRevision || sessionObj.AnalysisStatus == Models.Entities.RaceAnalysisStatus.Error)
+            return Ok(new List<RaceLegPerformanceDto>());
 
         var perfs = await db.RaceLegPerformances
             .AsNoTracking()
@@ -40,13 +43,13 @@ public class PerformanceController(AppDbContext db, SessionAuthorizer sessionAut
                 p.CourseLegId,
                 p.CourseLeg.LegName ?? $"Leg {p.LegIndex}",
                 p.LegIndex,
-                p.Status.ToString(),
+                p.Status.ToString(), p.Reason,
                 p.ExitedPreviousMarkAt,
-                p.EnteredCurrentMarkAt,
+                p.EnteredCurrentMarkAt, p.ExitedCurrentMarkAt,
                 p.SailedDistanceMeters,
                 p.AverageSpeedOverGround,
                 p.AverageVelocityMadeGood,
-                p.MaxSpeedOverGround))
+                p.MaxSpeedOverGround, p.TargetType.ToString(), p.TargetLatitude, p.TargetLongitude))
             .PageAsync(HttpContext, ct);
 
         return Ok(perfs);

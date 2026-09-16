@@ -22,6 +22,8 @@ public class Race
     public float MaxSpeedOverGround { get; set; }
     public string? Notes { get; set; }
     public RaceAnalysisStatus AnalysisStatus { get; set; } = RaceAnalysisStatus.Pending;
+    public string? AnalysisReason { get; set; }
+    public int AnalysisRevision { get; set; }
 
     public Session? Session { get; set; } = null;
     public Course? Course { get; set; } = null;

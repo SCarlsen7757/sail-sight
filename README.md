@@ -251,11 +251,13 @@ VKX files are decoded by the [Vakaros.Vkx.Parser.NET](https://github.com/SCarlse
 
 ## Roadmap
 
-- [ ] **Mark-to-mark VMG** — calculate VMG towards the next course mark when a course is assigned to a session, replacing the current upwind/downwind approximation
+- [x] **Backend course-leg analysis** — time-weighted speed and VMG toward each race-assigned mark, GPS-derived port/starboard passing-side checks, gate crossings and gate-midpoint VMG, with explicit uncertain/unreached outcomes and calculation tests
+- [ ] **Course-aware recorded replay** — per-leg summaries, target highlighting, and VMG-to-target readout/charts synchronized with playback of exported VKX recordings
 - [ ] **Performance benchmarks** — compare speed, VMG, and tacking angles across multiple sessions on the same course
 - [ ] **Polar diagram** — plot boat speed against true wind angle to build an empirical polar curve, if wind data is available
 - [ ] **Session comparison** — overlay two or more race tracks on the same map
-- [ ] **Enhanced telemetry UI** — the API already stores wind, speed-through-water, depth, temperature, and load sensor data; surface these data streams in the Web UI with dedicated charts and gauges
+- [x] **Additional telemetry charts** — wind, speed-through-water, depth, temperature, load, and shift angles appear when present in the recording
+- [ ] **Additional telemetry gauges** — expose the additional recorded sensor channels in dedicated playback instruments
 - [ ] **Weather data** — fetch historic weather conditions (wind speed, wind direction, temperature, precipitation, cloud cover) from an external weather API and overlay them on race sessions
 
 ---

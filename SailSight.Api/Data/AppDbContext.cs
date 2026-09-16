@@ -230,6 +230,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(r => r.MaxSpeedOverGround).HasColumnName("max_speed_over_ground");
             e.Property(r => r.Notes).HasColumnName("notes");
             e.Property(r => r.AnalysisStatus).HasColumnName("analysis_status").HasConversion<string>();
+            e.Property(r => r.AnalysisReason).HasColumnName("analysis_reason");
+            e.Property(r => r.AnalysisRevision).HasColumnName("analysis_revision");
             e.HasIndex(r => new { r.SessionId, r.RaceNumber }).IsUnique();
             e.HasOne(r => r.Session).WithMany(s => s.Races).HasForeignKey(r => r.SessionId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(r => r.Course).WithMany(c => c.Races).HasForeignKey(r => r.CourseId).OnDelete(DeleteBehavior.SetNull);
@@ -245,6 +247,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
             e.Property(p => p.CourseLegId).HasColumnName("course_leg_id");
             e.Property(p => p.LegIndex).HasColumnName("leg_index");
             e.Property(p => p.Status).HasColumnName("status").HasConversion<string>();
+            e.Property(p => p.Reason).HasColumnName("reason");
+            e.Property(p => p.ExitedCurrentMarkAt).HasColumnName("exited_current_mark_at");
+            e.Property(p => p.TargetLatitude).HasColumnName("target_latitude");
+            e.Property(p => p.TargetLongitude).HasColumnName("target_longitude");
+            e.Property(p => p.TargetType).HasColumnName("target_type").HasConversion<string>();
             e.Property(p => p.ExitedPreviousMarkAt).HasColumnName("exited_previous_mark_at");
             e.Property(p => p.EnteredCurrentMarkAt).HasColumnName("entered_current_mark_at");
             e.Property(p => p.SailedDistanceMeters).HasColumnName("sailed_distance_meters");

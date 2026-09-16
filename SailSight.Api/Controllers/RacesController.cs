@@ -64,7 +64,7 @@ public class RacesController(AppDbContext db, StartAnalysisService startAnalysis
         var startAnalysisResult = await startAnalysis.ComputeAsync(race, race.SessionId, pinEnd, boatEnd, ct);
         return Ok(new RaceDetailDto(race.Id, race.SessionId, race.RaceNumber, race.CourseId, race.CountdownStartedAt, race.CountdownDurationSeconds,
             race.StartedAt, race.EndedAt, duration, race.SailedDistanceMeters, race.MaxSpeedOverGround, await sessionAuth.CanReadPrivateAsync(race.SessionId, ct) ? race.Notes : null,
-            pinEnd, boatEnd, startAnalysisResult, race.Session?.TelemetryRateHz ?? 1, race.Session?.BoatId));
+            pinEnd, boatEnd, startAnalysisResult, race.Session?.TelemetryRateHz ?? 1, race.Session?.BoatId, race.AnalysisStatus.ToString(), race.AnalysisReason));
     }
 
     [AllowAnonymous]
@@ -279,11 +279,10 @@ public class RacesController(AppDbContext db, StartAnalysisService startAnalysis
         if (request.CourseId.HasValue)
         {
             race.CourseId = request.CourseId.Value == Guid.Empty ? null : request.CourseId.Value;
-            if (race.CourseId != null)
-            {
-                // Trigger leg analysis
-                await legAnalysis.AnalyzeRaceAsync(race.Id, ct);
-            }
+            race.AnalysisRevision = 0;
+            race.AnalysisStatus = RaceAnalysisStatus.Pending;
+            await db.SaveChangesAsync(ct);
+            await legAnalysis.AnalyzeRaceAsync(race.Id, ct);
         }
         if (request.Notes is not null)
             race.Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes;

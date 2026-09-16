@@ -5633,6 +5633,16 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "analysisStatus": {
+            "type": "string",
+            "default": "Pending"
+          },
+          "analysisReason": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -5746,12 +5756,17 @@
           "legName",
           "legIndex",
           "status",
+          "reason",
           "exitedPreviousMarkAt",
           "enteredCurrentMarkAt",
+          "exitedCurrentMarkAt",
           "sailedDistanceMeters",
           "averageSpeedOverGround",
           "averageVelocityMadeGood",
-          "maxSpeedOverGround"
+          "maxSpeedOverGround",
+          "targetType",
+          "targetLatitude",
+          "targetLongitude"
         ],
         "type": "object",
         "properties": {
@@ -5781,17 +5796,37 @@
           "status": {
             "type": "string"
           },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "exitedPreviousMarkAt": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
           },
           "enteredCurrentMarkAt": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "exitedCurrentMarkAt": {
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
           },
           "sailedDistanceMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
+              "null",
               "number",
               "string"
             ],
@@ -5800,6 +5835,7 @@
           "averageSpeedOverGround": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
+              "null",
               "number",
               "string"
             ],
@@ -5808,6 +5844,7 @@
           "averageVelocityMadeGood": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
+              "null",
               "number",
               "string"
             ],
@@ -5816,10 +5853,30 @@
           "maxSpeedOverGround": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
+              "null",
               "number",
               "string"
             ],
             "format": "float"
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetLatitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "targetLongitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
