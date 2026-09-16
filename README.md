@@ -199,11 +199,15 @@ The development override keeps `/app/node_modules` in a named volume. Rebuilding
 
 Compose runs migrations and initial administrator bootstrap in the one-shot `migrate` service; the API uses a separate runtime database role and has `Database__AutoMigrate=false`. For host development, the `Localhost` launch profile permits automatic migrations unless disabled. `SKIP_DB_MIGRATION=true` suppresses database initialization during OpenAPI generation. See the [deployment guide](docs/security/implementation.md#local-setup) for credentials and initialization.
 
-To add a new migration:
+Until `v1.0.0` the schema is a single baseline `InitialCreate` migration rather than a chain, so pre-release versions have no upgrade path and are installed fresh. After changing the model, delete the files in `SailSight.Api/Migrations/`, regenerate the baseline, and recreate your databases:
 
 ```bash
-dotnet ef migrations add <MigrationName> --project SailSight.Api --startup-project SailSight.Api
+SKIP_DB_MIGRATION=true Web__PublicBaseUrl=https://localhost dotnet ef migrations add InitialCreate --project SailSight.Api --startup-project SailSight.Api
+
+docker compose down -v   # discard the old development database
 ```
+
+The two environment variables mirror what the OpenAPI build target sets; without them the design-time host fails its application-origin check.
 
 ---
 

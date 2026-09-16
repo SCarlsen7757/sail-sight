@@ -6,7 +6,9 @@ Until the first stable v1 release (`v1.0.0`), breaking changes are allowed acros
 
 Development and test databases are disposable during this period. Agents may wipe and recreate them, and replace or consolidate migrations when needed for the task, without separate approval. Verify the target is the intended SailSight development/test database before resetting it, and document any required reset in the change description. This permission does not extend to production databases or unrelated data.
 
-Keep fresh-database setup working. Once `v1.0.0` is released, this blanket permission expires: preserve released compatibility and data through migrations, and obtain explicit approval for destructive resets.
+The schema therefore ships as a **single baseline migration**, `SailSight.Api/Migrations/<timestamp>_InitialCreate.cs`. Do not stack a second migration on top of it. A schema change means deleting the existing migration and snapshot, regenerating one `InitialCreate` from the model, and recreating the disposable databases (see [Build & Run](#build--run)).
+
+Keep fresh-database setup working. Once `v1.0.0` is released, this blanket permission expires: preserve released compatibility and data through migrations, and obtain explicit approval for destructive resets. The first released migration becomes a real baseline that must be added to, not regenerated.
 
 ## Build & Run
 
@@ -24,8 +26,12 @@ docker compose -f docker-compose.yml up -d --build
 # Rebuild a single Docker image (e.g. after adding npm packages)
 docker compose build web
 
-# Add an EF Core migration
-dotnet ef migrations add <MigrationName> --project SailSight.Api --startup-project SailSight.Api
+# Regenerate the single pre-v1 baseline migration after a model change.
+# Delete SailSight.Api/Migrations/*.cs first, then recreate the databases
+# (docker compose down -v, and npm run e2e:down in SailSight.Web).
+# The two variables mirror what the OpenAPI MSBuild target sets; without them
+# the design-time host fails its origin check and cannot resolve AppDbContext.
+SKIP_DB_MIGRATION=true Web__PublicBaseUrl=https://localhost dotnet ef migrations add InitialCreate --project SailSight.Api --startup-project SailSight.Api
 ```
 
 ### Frontend (SailSight.Web)

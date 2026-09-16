@@ -2,7 +2,7 @@
 
 The behavior and setup sections describe the current implementation. The [historical verification](#historical-verification-2026-09-10) section preserves evidence from the September 10, 2026 security work on `feature/frontend/rework`, starting from reviewed commit `41d76bd`; it is not a current test or vulnerability report.
 
-Fresh installations run the tracked migrations. For existing installations, review the migrations for the version being deployed and back up data before upgrading. The original security work used a fresh disposable development database; this is not a blanket instruction to reset existing installations. The later [recorded-analysis migration](../analysis/recorded-races.md#upgrade-and-recalculation) preserves recordings and rebuilds derived results.
+Before `v1.0.0` the schema ships as a single baseline `InitialCreate` migration that is regenerated whenever the model changes, so there is no supported upgrade path between pre-release versions: installations are created fresh. The original security work used a fresh disposable development database. [Recorded-analysis results](../analysis/recorded-races.md#recalculation) are derived data rebuilt at startup, not migrated.
 
 ## Behavior
 
@@ -12,7 +12,7 @@ Fresh installations run the tracked migrations. For existing installations, revi
 - Identity operation results are checked. Security stamps are validated on each authenticated request and rotated on administrative changes and recovery. Setup replacements invalidate earlier links; successful redemption prevents reuse. Invitation consumption, creation and role assignment commit together before sign-in.
 - Each MultiUser sign-in creates a persisted login session. Logout revokes that session, so a late response cannot restore its validity. Cookies renew through sliding expiration rather than every security-stamp check.
 - Deleting an account that owns sailing data or is a team's sole owner returns 409. Ownership foreign keys restrict deletion; the historical team creator is nullable. Initial administrator bootstrap runs only on an uninitialized installation. Notification streams revalidate account privileges and reconnect through authentication.
-- PAT authentication/endpoints and AI reports/UI/configuration/packages are removed. Migrations remove their persistence tables. Old configuration cannot re-enable these features.
+- PAT authentication/endpoints and AI reports/UI/configuration/packages are removed. Their persistence tables are absent from the schema. Old configuration cannot re-enable these features.
 - Unsafe requests require `Origin` matching `Web:PublicBaseUrl`, including login/setup. Authenticated writes additionally require `X-CSRF-Token` matching the `sailsight.csrf` cookie, including in SingleUser mode where the principal is synthetic; the shared browser helpers supply it. CORS requires explicit configured origins. Login and invitation limits are separate and partitioned by trusted client IP.
 
 ## Uploads and pagination
