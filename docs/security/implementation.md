@@ -43,6 +43,8 @@ On a fresh database, `deployment/init-runtime-role.sh` creates `sailsight_runtim
 
 Use `docker-compose.ghcr.yml` with the checkout's `deployment/` files. Set digest-qualified `SAILSIGHT_API_IMAGE` and `SAILSIGHT_WEB_IMAGE`, the database credentials and initial email above, and an HTTPS `PUBLIC_BASE_URL`. Supply a PFX via `AUTH_KEY_CERTIFICATE_PATH` and its password via `AUTH_KEY_CERTIFICATE_PASSWORD`. Protect the PFX/private key and environment file with host permissions and back them up securely: database-persisted authentication keys are encrypted with that certificate.
 
+`CARTO_API_KEY` is optional and supplies the basemap key at runtime; it is served to browsers through the unauthenticated `/api/config` endpoint by design and must be restricted to your origin in the CARTO dashboard. Do not put any secret-bearing value in that variable — it is public.
+
 Configure an HTTPS ingress, explicitly list its addresses in `TRUSTED_INGRESS_PROXIES`, and expose the web binding only as required (`WEB_BIND`, `WEB_PORT`). Keep the API internal/loopback. The Node entry server strips forwarding headers from untrusted clients, derives the real socket address, and signs sanitized forwarding information for the Next proxy. The API trusts the fixed web-container address only. Adjust both network and trust configuration together if changing the Compose subnet. Do not bypass `entry-server.mjs` in deployment.
 
 HTTP shared origins fail startup; the entry rejects HTTP requests for an HTTPS application origin. HTML responses include CSP and security headers. Inline hydration/styles remain allowed for Next/visualization compatibility. Cloudflare Tunnel production deployment remains separate.

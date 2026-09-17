@@ -9,6 +9,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# No API keys are baked in here — the image ships keyless and reads CARTO_API_KEY
+# from the container environment at request time (src/app/api/config/route.ts).
 RUN npm run build
 
 FROM node:26.8.2-alpine@sha256:ef24c5053d50fdc3e4e56eb4e7ddb7861874ab0fdc797046ba897581deb8e868 AS runner

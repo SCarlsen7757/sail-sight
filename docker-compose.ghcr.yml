@@ -74,6 +74,9 @@ services:
       APP_ORIGIN: ${PUBLIC_BASE_URL:?set HTTPS PUBLIC_BASE_URL}
       TRUSTED_INGRESS_PROXIES: ${TRUSTED_INGRESS_PROXIES:-}
       HOSTNAME: 0.0.0.0
+      # Your own CARTO key, restricted to PUBLIC_BASE_URL in the CARTO dashboard.
+      # Unset renders basemaps with a watermark; nothing else is affected.
+      CARTO_API_KEY: ${CARTO_API_KEY:-}
     ports:
       - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8081}:3000"
 
