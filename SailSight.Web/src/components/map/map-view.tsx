@@ -15,6 +15,10 @@ interface InternalProps extends RaceMapProps {
   followMode: boolean;
   onExitFollow: () => void;
   fitTick: number;
+  /** CARTO basemap key from runtime config, or null when none is configured. */
+  cartoApiKey: string | null;
+  /** False until runtime config settles; the basemap waits rather than fetching unkeyed tiles. */
+  configLoaded: boolean;
 }
 
 // Heatmap color from speed (m/s normalized over the track range).
@@ -143,13 +147,14 @@ const MARK_RADIUS = 6;
 export default function MapView({
   positions, race, legs, activeCourseLegId, startLine, playbackPosition, preRacePositions, windowPositions,
   boatLengthMeters,
-  openSeaMap, trackMode, followMode, onExitFollow, fitTick,
+  openSeaMap, trackMode, followMode, onExitFollow, fitTick, cartoApiKey, configLoaded,
 }: InternalProps) {
   const { resolvedTheme } = useTheme();
   const [zoom, setZoom] = useState(14);
-  const tileUrl = resolvedTheme === "dark"
+  const cartoParam = cartoApiKey ? `?api_key=${encodeURIComponent(cartoApiKey)}` : "";
+  const tileUrl = (resolvedTheme === "dark"
     ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png") + cartoParam;
 
   const tolerance = useMemo(() => zoomToTolerance(zoom), [zoom]);
 
@@ -257,14 +262,21 @@ export default function MapView({
     <MapContainer center={center as L.LatLngExpression} zoom={14} className="h-full w-full">
       <ZoomTracker onZoom={setZoom} />
       <AutoInvalidateSize />
-      <TileLayer
-        key={tileUrl}
-        url={tileUrl}
-        attribution='&copy; OpenStreetMap &copy; CARTO'
-      />
+      {/* Both tile layers share Leaflet's tilePane, where stacking follows mount
+          order — explicit zIndex keeps the opaque basemap under the overlay
+          regardless of which one mounts first. */}
+      {configLoaded && (
+        <TileLayer
+          key={tileUrl}
+          url={tileUrl}
+          zIndex={1}
+          attribution='&copy; OpenStreetMap &copy; CARTO'
+        />
+      )}
       {openSeaMap && (
         <TileLayer
           url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
+          zIndex={2}
           attribution='&copy; OpenSeaMap'
           opacity={0.85}
         />

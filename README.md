@@ -6,6 +6,8 @@ A self-hosted sailing telemetry analysis tool for [Vakaros](https://vakaros.com/
 >
 > **Local quickstart:** Create an ignored `.env` with independent `POSTGRES_PASSWORD` and `RUNTIME_DB_PASSWORD`, plus `AUTH_ADMIN_EMAIL`. Optionally set `AUTH_ADMIN_PASSWORD`; otherwise obtain the first setup URL from `docker compose logs migrate`.
 >
+> **Map tiles:** the CARTO basemap requires an API key in production, or tiles render with an "API key required" watermark. Set `CARTO_API_KEY` in the web service's environment (left unset locally is fine — the watermark is expected in local dev). It is a **runtime** variable, so the published images work unchanged: supply your own key and restart, with no rebuild. Every deployment needs its own key, because in the CARTO dashboard you must restrict the key's "Allowed Referer URLs" to your deployment's exact origin(s); CARTO does not support wildcard referrers, only an exact comma-separated list with trailing slash (e.g. `https://your-domain/`). The key is served to the browser by design — referer restriction is what protects it, not secrecy. For `npm run dev` outside Docker, put it in an ignored `SailSight.Web/.env.local`.
+>
 > Run `docker compose -f docker-compose.yml up -d --build` and open `http://localhost:8081`. This is the explicit localhost development profile. Shared browser access requires HTTPS and configured proxy trust.
 >
 > See the [security implementation and deployment guide](docs/security/implementation.md) for account rules, SingleUser restrictions, upload limits, key protection, migrations and verification.
@@ -155,7 +157,7 @@ The web UI binds to `127.0.0.1:8081`, the API to `127.0.0.1:8080`, and the datab
 
 ### Self-hosting with pre-built images
 
-Use `docker-compose.ghcr.yml` together with this checkout's `deployment/` directory. Set digest-qualified `SAILSIGHT_API_IMAGE` and `SAILSIGHT_WEB_IMAGE`, separate migration/runtime database passwords, an initial administrator email, an HTTPS application origin, and the authentication-key certificate settings. The [deployment guide](docs/security/implementation.md#sharedprivate-network-setup) explains proxy trust, storage ownership and configuration.
+Use `docker-compose.ghcr.yml` together with this checkout's `deployment/` directory. Set digest-qualified `SAILSIGHT_API_IMAGE` and `SAILSIGHT_WEB_IMAGE`, separate migration/runtime database passwords, an initial administrator email, an HTTPS application origin, and the authentication-key certificate settings. Optionally set `CARTO_API_KEY` to your own basemap key, restricted to your origin as described above; without it maps render with a watermark. The [deployment guide](docs/security/implementation.md#sharedprivate-network-setup) explains proxy trust, storage ownership and configuration.
 
 The database bind mount defaults to `./data/db` and covers `/home/postgres/pgdata`. Prepare an empty directory owned by the pinned image's `postgres` user for a fresh installation. Use PostgreSQL backup tools rather than copying a running database directory. Cloudflare Tunnel deployment is tracked separately in [issue #6](https://github.com/SCarlsen7757/sail-sight/issues/6).
 

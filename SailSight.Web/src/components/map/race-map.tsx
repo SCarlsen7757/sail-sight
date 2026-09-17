@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { NormalizedPosition, RaceDetail, CourseLeg } from "@/lib/schemas";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { useRuntimeConfig } from "@/lib/runtime-config";
 import { Crosshair, Maximize2 } from "lucide-react";
 
 // Leaflet must only run on the client
@@ -34,6 +35,10 @@ export function RaceMap(props: RaceMapProps) {
   const [openSeaMap, setOpenSeaMap] = useState(false);
   const [followMode, setFollowMode] = useState(true);
   const [fitTick, setFitTick] = useState(0);
+  // Resolved here rather than in MapView so the request runs in parallel with the
+  // telemetry fetch. MapView is behind both the positions guard below and a dynamic
+  // import, so fetching there would serialize the basemap behind all of it.
+  const { cartoApiKey, loaded: configLoaded } = useRuntimeConfig();
 
   if (!props.positions) return <SkeletonLoader className="h-96" />;
 
@@ -48,6 +53,8 @@ export function RaceMap(props: RaceMapProps) {
         followMode={followMode}
         onExitFollow={() => setFollowMode(false)}
         fitTick={fitTick}
+        cartoApiKey={cartoApiKey}
+        configLoaded={configLoaded}
       />
       <div className="pointer-events-none absolute right-3 top-3 z-[1000] flex flex-col items-end gap-2">
         <div className="pointer-events-auto flex overflow-hidden rounded-md ring-1 ring-border-default">

@@ -1,6 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+// Catch-all BFF proxy to the .NET API. Note that literal sibling routes take
+// precedence over this one: `app/api/config/route.ts` serves `/api/config`
+// locally and never reaches the API. Anything added alongside it must stay
+// outside the `/api/v{version}/...` namespace the API owns.
 const API_BASE = process.env.API_BASE_URL ?? "http://localhost:5223";
 
 const HOP_BY_HOP = new Set([
