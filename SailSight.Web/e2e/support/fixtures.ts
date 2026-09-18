@@ -17,7 +17,8 @@ const origin = new URL(baseUrl).origin;
 const STUB_TILE_DARK = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQ0dEDAAEOAIcVSdztAAAAAElFTkSuQmCC", "base64");
 const STUB_TILE_LIGHT = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGN48uIFAAVoArVLx9a5AAAAAElFTkSuQmCC", "base64");
 const TRANSPARENT_TILE = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
-const TILE_HOSTS = /basemaps\.cartocdn\.com|tile\.openstreetmap\.org|tiles\.openseamap\.org/;
+// Mirrors the tile hosts allowed by the CSP in next.config.ts.
+const TILE_HOSTS = /basemaps\.cartocdn\.com|tiles\.openseamap\.org/;
 
 /** Replaces map tiles with flat, theme-matched stubs (the OpenSeaMap overlay becomes transparent). */
 export async function stubMapTiles(context: BrowserContext) {

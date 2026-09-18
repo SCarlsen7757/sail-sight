@@ -91,7 +91,7 @@ Conversions happen in the frontend. Telemetry speeds and distances use m/s and m
 - Recorded countdown tracks are dashed purple. Start-line endpoints use a cyan triangle and orange square. Course overlays show mark radii, gate segments, and the active target; they do not draw a complete mark-to-mark course polyline.
 - The playback arrow follows COG. The map fits the race track on load. Narrowing the time window adds an overlay without dimming the rest of the track.
 
-CARTO provides theme-dependent basemaps. The key comes from the `CARTO_API_KEY` runtime environment variable via `/api/config`; deployments without one render a provider watermark, tracked in [issue #26](https://github.com/SCarlsen7757/sail-sight/issues/26). The UI offers OpenSeaMap, but the current CSP omits its tile host, so that overlay can be blocked. Documentation screenshots use stub tiles and do not validate either external service.
+CARTO provides theme-dependent basemaps. The key comes from the `CARTO_API_KEY` runtime environment variable via `/api/config`; deployments without one render a provider watermark. The UI offers an OpenSeaMap seamark overlay on top of the basemap. The CSP `img-src` directive in `next.config.ts` lists both tile hosts and nothing else, so adding a provider means updating it. Documentation screenshots use stub tiles and do not validate either external service.
 
 ### Instruments and charts
 
