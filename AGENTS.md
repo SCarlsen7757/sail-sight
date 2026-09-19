@@ -38,7 +38,7 @@ SKIP_DB_MIGRATION=true Web__PublicBaseUrl=https://localhost dotnet ef migrations
 
 ```bash
 cd SailSight.Web
-npm ci            # install dependencies before host builds/type generation
+npm ci             # exact install from the lockfile; a full `dotnet build SailSight.slnx` runs `npm install` for you
 npm run dev        # dev server with hot reload
 npm run build      # production build
 npm run lint       # ESLint
@@ -53,7 +53,7 @@ npm run gen:api    # regenerate src/lib/api-types.ts from the OpenAPI spec
 dotnet test SailSight.Api.Tests
 
 # Frontend E2E (Playwright) — run from SailSight.Web; stop the dev stack first
-npx playwright install chromium # first-time browser setup, after npm ci
+# The Playwright browser is installed automatically by test:e2e, test:e2e:ui and screenshots.
 npm run e2e:up        # start docker-compose.yml as project "sailsight-e2e" with a generated .e2e-compose.env
 npm run seed          # fill it with the fixture scenario (safe to re-run); also useful for manual testing
 npm run test:e2e      # run the specs in e2e/specs
@@ -89,7 +89,20 @@ Next.js 16 (Web)  ──HTTP/JSON──►  ASP.NET Core 10 (Api)  ──EF Core
 `dotnet build SailSight.slnx` triggers two MSBuild targets in `SailSight.Api.csproj`:
 
 1. `GenerateOpenApiDocuments` → `SailSight.Api/OpenApi/SailSight.Api.json`
-2. `GenerateTypeScriptTypesV1` → runs `npm run gen:api` → `SailSight.Web/src/lib/api-types.ts`
+2. `GenerateTypeScriptTypesV1` → runs `npx openapi-typescript` → `SailSight.Web/src/lib/api-types.ts`
+
+The API project invokes the generator through `npx` rather than `npm run gen:api`, so it never needs
+`SailSight.Web/node_modules`: building or testing the API on a fresh clone does not install the
+frontend. The version is pinned in both `SailSight.Api.csproj` and `SailSight.Web/package.json`, and
+CI regenerates with the latter and diffs the result, so a mismatch that changes output fails.
+
+`SailSight.slnx` gives `SailSight.Web.esproj` a `BuildDependency` on the API so the web build always
+compiles against freshly generated types instead of racing the generator. The esproj sets
+`AddSyntheticProjectReferencesForSolutionDependencies=false`: on the command line MSBuild otherwise
+promotes that solution dependency to a real `ProjectReference`, and the JavaScript SDK then copies the
+API's build output into `SailSight.Web/`. The web project installs its own dependencies through the
+SDK (`npm install`, skipped when they are up to date); `npm ci` stays the exact-lockfile install used
+by CI, Docker, and manual runs.
 
 **`api-types.ts` is generated — never edit it manually.** The API client in `src/lib/api.ts` wraps `openapi-fetch` using these types for fully-typed HTTP calls.
 

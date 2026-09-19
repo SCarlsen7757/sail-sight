@@ -7,6 +7,7 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/OpenApi</OpenApiDocumentsDirectory>
     <AssemblyTitle>SailSight API</AssemblyTitle>
+    <WebDirectory>$(MSBuildProjectDirectory)/../SailSight.Web</WebDirectory>
   </PropertyGroup>
 
   <UsingTask TaskName="_SetSkipDbMigrationEnv" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
@@ -71,14 +72,19 @@
       3. The npm script "gen:api:v2" is already scaffolded in package.json.
       4. Document the new version's types in src/lib/schemas.ts.
   -->
+  <!--
+    api-types.ts is generated with npx so this project never needs SailSight.Web/node_modules.
+    Keep the version in sync with openapi-typescript in SailSight.Web/package.json; the CI drift
+    check regenerates with that one and diffs the result, so a mismatch that changes output fails.
+  -->
   <Target Name="GenerateTypeScriptTypesV1"
           AfterTargets="GenerateOpenApiDocuments"
           Condition="'$(SkipTypeScriptGeneration)' != 'true'"
           Inputs="$(MSBuildProjectDirectory)/OpenApi/SailSight.Api.json"
-          Outputs="$(MSBuildProjectDirectory)/../SailSight.Web/src/lib/api-types.ts">
+          Outputs="$(WebDirectory)/src/lib/api-types.ts">
     <Message Text="Generating TypeScript API types from OpenAPI spec (v1)..." Importance="high" />
-    <Exec Command="npm run gen:api"
-          WorkingDirectory="$(MSBuildProjectDirectory)/../SailSight.Web" />
+    <Exec Command="npx -y openapi-typescript@7.13.0 OpenApi/SailSight.Api.json -o $(WebDirectory)/src/lib/api-types.ts"
+          WorkingDirectory="$(MSBuildProjectDirectory)" />
   </Target>
 
   <!--
@@ -88,10 +94,10 @@
           AfterTargets="GenerateOpenApiDocuments"
           Condition="'$(SkipTypeScriptGeneration)' != 'true'"
           Inputs="$(MSBuildProjectDirectory)/OpenApi/v2.json"
-          Outputs="$(MSBuildProjectDirectory)/../SailSight.Web/src/lib/api-types-v2.ts">
+          Outputs="$(WebDirectory)/src/lib/api-types-v2.ts">
     <Message Text="Generating TypeScript API types from OpenAPI spec (v2)..." Importance="high" />
-    <Exec Command="npm run gen:api:v2"
-          WorkingDirectory="$(MSBuildProjectDirectory)/../SailSight.Web" />
+    <Exec Command="npx -y openapi-typescript@7.13.0 OpenApi/v2.json -o $(WebDirectory)/src/lib/api-types-v2.ts"
+          WorkingDirectory="$(MSBuildProjectDirectory)" />
   </Target>
   -->
 
