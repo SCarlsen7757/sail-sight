@@ -1,3 +1,13 @@
 <Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.6578810">
 
+  <PropertyGroup>
+    <!--
+      SailSight.slnx gives this project a BuildDependency on SailSight.Api so the web build always
+      compiles against freshly generated api-types.ts. On the command line MSBuild promotes solution
+      dependencies to real ProjectReferences, which makes this SDK copy the API's build output into
+      SailSight.Web/; this keeps the dependency ordering-only, as it already is inside Visual Studio.
+    -->
+    <AddSyntheticProjectReferencesForSolutionDependencies>false</AddSyntheticProjectReferencesForSolutionDependencies>
+  </PropertyGroup>
+
 </Project>

@@ -8,5 +8,6 @@
   <Project Path="SailSight.Web/SailSight.Web.esproj">
     <Build />
     <Deploy />
+    <BuildDependency Project="SailSight.Api/SailSight.Api.csproj" />
   </Project>
 </Solution>
