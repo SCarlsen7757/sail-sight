@@ -1,3 +1,14 @@
 <Project Sdk="Microsoft.VisualStudio.JavaScript.Sdk/1.0.6578810">
 
+  <PropertyGroup>
+    <!--
+      SailSight.Api's EnsureWebDependencies target owns installing node_modules, because its
+      gen:api step needs them too. Leaving the SDK's own RunNpmInstall enabled means two npm
+      processes writing node_modules concurrently during a solution build, which fails with
+      ENOTEMPTY on a fresh clone. An ordering dependency between the two projects is not an
+      option: it makes this SDK copy the API's build output into SailSight.Web/.
+    -->
+    <ShouldRunNpmInstall>false</ShouldRunNpmInstall>
+  </PropertyGroup>
+
 </Project>

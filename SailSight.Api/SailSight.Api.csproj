@@ -7,6 +7,7 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     <OpenApiDocumentsDirectory>$(MSBuildProjectDirectory)/OpenApi</OpenApiDocumentsDirectory>
     <AssemblyTitle>SailSight API</AssemblyTitle>
+    <WebDirectory>$(MSBuildProjectDirectory)/../SailSight.Web</WebDirectory>
   </PropertyGroup>
 
   <UsingTask TaskName="_SetSkipDbMigrationEnv" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
@@ -71,14 +72,50 @@
       3. The npm script "gen:api:v2" is already scaffolded in package.json.
       4. Document the new version's types in src/lib/schemas.ts.
   -->
+  <!--
+    Installs SailSight.Web's dependencies so the build works from a fresh clone. gen:api below runs
+    out of that directory; without this the first `dotnet build SailSight.slnx` fails with
+    "npm run gen:api exited with code 1".
+
+    This is the *only* npm install in the solution — SailSight.Web.esproj sets
+    ShouldRunNpmInstall=false. Two installers race over node_modules and fail with ENOTEMPTY, and
+    an ordering dependency between the projects is not an option: it makes the JavaScript SDK copy
+    the API's build output into SailSight.Web/.
+
+    Hooking _GenerateProjectRestoreGraph as well as Restore is what puts this in the restore phase,
+    which finishes before any project builds — so the web build finds node_modules already present
+    even though nothing orders the two projects. (The SDK's own NPMRestore hook is an empty target,
+    despite its comment; its install actually runs during build.)
+
+    The Exists() guard matters for the API Dockerfile, which runs `dotnet restore` after copying
+    only the two .csproj files and passes SkipTypeScriptGeneration=true to build/publish but not to
+    restore. Without the guard this target fires in that layer and fails on a SailSight.Web that
+    is not in the image context.
+
+    The stamp lives inside node_modules, so removing that directory also removes it. Runs on a
+    fresh clone (no stamp) and after a dependency change (package-lock.json newer); skipped
+    otherwise. CI passes SkipTypeScriptGeneration=true for the API build and installs dependencies
+    in its own step, so none of this affects CI.
+  -->
+  <Target Name="EnsureWebDependencies"
+          AfterTargets="Restore;_GenerateProjectRestoreGraph"
+          BeforeTargets="GenerateTypeScriptTypesV1"
+          Condition="'$(SkipTypeScriptGeneration)' != 'true' AND Exists('$(WebDirectory)/package.json')"
+          Inputs="$(WebDirectory)/package-lock.json"
+          Outputs="$(WebDirectory)/node_modules/.sailsight-npm-ci.stamp">
+    <Message Text="Installing SailSight.Web dependencies (npm ci)..." Importance="high" />
+    <Exec Command="npm ci" WorkingDirectory="$(WebDirectory)" />
+    <Touch Files="$(WebDirectory)/node_modules/.sailsight-npm-ci.stamp" AlwaysCreate="true" />
+  </Target>
+
   <Target Name="GenerateTypeScriptTypesV1"
           AfterTargets="GenerateOpenApiDocuments"
           Condition="'$(SkipTypeScriptGeneration)' != 'true'"
           Inputs="$(MSBuildProjectDirectory)/OpenApi/SailSight.Api.json"
-          Outputs="$(MSBuildProjectDirectory)/../SailSight.Web/src/lib/api-types.ts">
+          Outputs="$(WebDirectory)/src/lib/api-types.ts">
     <Message Text="Generating TypeScript API types from OpenAPI spec (v1)..." Importance="high" />
     <Exec Command="npm run gen:api"
-          WorkingDirectory="$(MSBuildProjectDirectory)/../SailSight.Web" />
+          WorkingDirectory="$(WebDirectory)" />
   </Target>
 
   <!--

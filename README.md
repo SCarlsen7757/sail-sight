@@ -142,7 +142,7 @@ The generated `api-types.ts` is consumed by [openapi-fetch](https://openapi-ts.d
 ### Prerequisites
 
 - Docker with Compose and Linux-container support (for example Docker Desktop).
-- For host builds: a .NET 10 SDK and Node.js/npm. Run `npm ci` in `SailSight.Web` before `dotnet build SailSight.slnx`, which also invokes frontend type generation. Name the solution explicitly because the root also contains the Compose project. The Dockerfiles pin the container toolchains.
+- For host builds: a .NET 10 SDK and Node.js/npm. `dotnet build SailSight.slnx` installs the `SailSight.Web` dependencies itself when they are missing or `package-lock.json` has changed, then generates the frontend types. Name the solution explicitly because the root also contains the Compose project. The Dockerfiles pin the container toolchains.
 - Visual Studio with support for the project's .NET SDK and Docker Compose is optional; command-line development is also supported.
 
 ### Running with Docker Compose

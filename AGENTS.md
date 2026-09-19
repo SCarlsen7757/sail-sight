@@ -38,7 +38,7 @@ SKIP_DB_MIGRATION=true Web__PublicBaseUrl=https://localhost dotnet ef migrations
 
 ```bash
 cd SailSight.Web
-npm ci            # install dependencies before host builds/type generation
+npm ci             # optional; `dotnet build SailSight.slnx` installs these automatically
 npm run dev        # dev server with hot reload
 npm run build      # production build
 npm run lint       # ESLint
@@ -53,7 +53,7 @@ npm run gen:api    # regenerate src/lib/api-types.ts from the OpenAPI spec
 dotnet test SailSight.Api.Tests
 
 # Frontend E2E (Playwright) — run from SailSight.Web; stop the dev stack first
-npx playwright install chromium # first-time browser setup, after npm ci
+# The Playwright browser is installed automatically by test:e2e and screenshots.
 npm run e2e:up        # start docker-compose.yml as project "sailsight-e2e" with a generated .e2e-compose.env
 npm run seed          # fill it with the fixture scenario (safe to re-run); also useful for manual testing
 npm run test:e2e      # run the specs in e2e/specs
@@ -86,10 +86,21 @@ Next.js 16 (Web)  ──HTTP/JSON──►  ASP.NET Core 10 (Api)  ──EF Core
 
 ### OpenAPI → TypeScript codegen pipeline
 
-`dotnet build SailSight.slnx` triggers two MSBuild targets in `SailSight.Api.csproj`:
+`dotnet build SailSight.slnx` triggers three MSBuild targets in `SailSight.Api.csproj`:
 
-1. `GenerateOpenApiDocuments` → `SailSight.Api/OpenApi/SailSight.Api.json`
-2. `GenerateTypeScriptTypesV1` → runs `npm run gen:api` → `SailSight.Web/src/lib/api-types.ts`
+1. `EnsureWebDependencies` → `npm ci` in `SailSight.Web`, when `node_modules` is missing or
+   `package-lock.json` is newer than the stamp it writes. `gen:api` runs from that directory, so
+   without it a fresh clone fails.
+2. `GenerateOpenApiDocuments` → `SailSight.Api/OpenApi/SailSight.Api.json`
+3. `GenerateTypeScriptTypesV1` → runs `npm run gen:api` → `SailSight.Web/src/lib/api-types.ts`
+
+`EnsureWebDependencies` is the solution's only npm install — `SailSight.Web.esproj` sets
+`ShouldRunNpmInstall=false`. Two installers race over `node_modules` and fail with `ENOTEMPTY`, and
+ordering the projects instead is not an option: any dependency edge makes the JavaScript SDK copy the
+API's build output into `SailSight.Web/`. The target hooks `_GenerateProjectRestoreGraph` as well as
+`Restore` so it runs in the restore phase, which completes before any project builds. CI passes
+`SkipTypeScriptGeneration=true` for the API build and installs dependencies itself, so none of this
+changes CI.
 
 **`api-types.ts` is generated — never edit it manually.** The API client in `src/lib/api.ts` wraps `openapi-fetch` using these types for fully-typed HTTP calls.
 

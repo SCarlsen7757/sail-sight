@@ -12,8 +12,11 @@
     "e2e:up": "tsx e2e/stack/stack.ts up",
     "e2e:down": "tsx e2e/stack/stack.ts down",
     "seed": "tsx e2e/seed/index.ts",
+    "pretest:e2e": "playwright install chromium",
     "test:e2e": "playwright test --project=e2e",
+    "pretest:e2e:ui": "playwright install chromium",
     "test:e2e:ui": "playwright test --ui",
+    "prescreenshots": "playwright install chromium",
     "screenshots": "playwright test --project=screenshots"
   },
   "dependencies": {
