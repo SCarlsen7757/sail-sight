@@ -3,7 +3,7 @@
 const fill = require('fill-range');
 const stringify = require('./stringify');
 const utils = require('./utils');
-const { assertAstNesting } = require('./nesting');
+const { assertNesting, assertAstNesting } = require('./nesting');
 
 const append = (queue = '', stash = '', enclose = false) => {
   const result = [];
@@ -40,8 +40,10 @@ const expand = (ast, options = {}) => {
 
     let p = parent;
     let q = parent.queue;
+    let parentDepth = 0;
 
     while (p.type !== 'brace' && p.type !== 'root' && p.parent) {
+      assertNesting(++parentDepth);
       p = p.parent;
       q = p.queue;
     }
@@ -76,8 +78,10 @@ const expand = (ast, options = {}) => {
     const enclose = utils.encloseBrace(node);
     let queue = node.queue;
     let block = node;
+    let blockDepth = 0;
 
     while (block.type !== 'brace' && block.type !== 'root' && block.parent) {
+      assertNesting(++blockDepth);
       block = block.parent;
       queue = block.queue;
     }

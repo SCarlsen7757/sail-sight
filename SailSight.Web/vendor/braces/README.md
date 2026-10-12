@@ -18,6 +18,7 @@ Changes from upstream:
 - `lib/parse.js` checks nesting before creating brace or parenthesis nodes,
   including malformed, unclosed input. Escaped/quoted characters stay literal.
 - `compile`, `expand`, and `stringify` validate supplied ASTs before recursion.
+- Expansion's parent-chain walks are also bounded, including supplied parent cycles.
 - The package manifest identifies this private fork and retains `fill-range`.
 
 Run `npm run test:security` from `SailSight.Web` for compatibility, exploit, and

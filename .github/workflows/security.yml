@@ -33,7 +33,7 @@ jobs:
       - name: Audit NuGet dependencies
         if: ${{ !cancelled() && steps.npm-install.outcome == 'success' }}
         run: |
-          dotnet list SailSight.Api/SailSight.Api.csproj package --vulnerable --include-transitive --format json > nuget-audit.json
+          dotnet list SailSight.Api.Tests/SailSight.Api.Tests.csproj package --vulnerable --include-transitive --format json > nuget-audit.json
           python scripts/check-nuget-audit.py nuget-audit.json
   containers:
     runs-on: ubuntu-latest

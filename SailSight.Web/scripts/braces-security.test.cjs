@@ -85,3 +85,9 @@ test('micromatch and the Next ESLint plugin resolve the patched sources', () => 
     ['src/app/page.tsx', 'src/lib/api.ts']);
   assert.throws(() => micromatch.braces(nested('{', '}', 129)), isDepthError);
 });
+
+test('supplied AST parent cycles cannot hang expansion', () => {
+  const ast = { type: 'paren', nodes: [] };
+  ast.parent = ast;
+  assert.throws(() => braces.expand(ast), isDepthError);
+});
