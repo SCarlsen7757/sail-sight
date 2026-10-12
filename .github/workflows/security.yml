@@ -21,16 +21,24 @@ jobs:
         with:
           node-version: '26.8.2'
       - run: npm ci --prefix SailSight.Web
+        id: npm-install
+      - run: npm run test:security --prefix SailSight.Web
       - run: dotnet test SailSight.Api.Tests/SailSight.Api.Tests.csproj -p:SkipTypeScriptGeneration=true
       - run: npm run gen:api --prefix SailSight.Web && git diff --exit-code -- SailSight.Api/OpenApi SailSight.Web/src/lib/api-types.ts
       - run: npm run lint --prefix SailSight.Web
       - run: npm run typecheck --prefix SailSight.Web
-      - run: npm audit --prefix SailSight.Web --audit-level=high
-      - run: dotnet list SailSight.Api/SailSight.Api.csproj package --vulnerable --include-transitive --format json > nuget-audit.json
-      - run: python scripts/check-nuget-audit.py nuget-audit.json
+      - name: Audit npm dependencies
+        if: ${{ !cancelled() && steps.npm-install.outcome == 'success' }}
+        run: npm audit --prefix SailSight.Web --audit-level=high
+      - name: Audit NuGet dependencies
+        if: ${{ !cancelled() && steps.npm-install.outcome == 'success' }}
+        run: |
+          dotnet list SailSight.Api/SailSight.Api.csproj package --vulnerable --include-transitive --format json > nuget-audit.json
+          python scripts/check-nuget-audit.py nuget-audit.json
   containers:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: api

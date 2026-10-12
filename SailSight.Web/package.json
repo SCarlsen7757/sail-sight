@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "node entry-server.mjs",
     "lint": "eslint .",
+    "test:security": "node --test scripts/braces-security.test.cjs",
     "gen:api": "openapi-typescript ../SailSight.Api/OpenApi/SailSight.Api.json -o src/lib/api-types.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p e2e",
     "e2e:up": "tsx e2e/stack/stack.ts up",
@@ -28,7 +29,7 @@
     "leaflet": "1.9.4",
     "lucide-react": "1.44.0",
     "ml-savitzky-golay": "5.0.0",
-    "next": "16.3.4",
+    "next": "16.4.0",
     "next-themes": "0.4.6",
     "nextjs-toploader": "3.9.17",
     "openapi-fetch": "0.17.0",
@@ -45,12 +46,16 @@
     "@types/node": "26.5.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "braces": "file:vendor/braces",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.3.4",
+    "eslint-config-next": "16.4.0",
     "openapi-typescript": "7.13.0",
     "postcss": "8.5.28",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.13",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "braces": "$braces"
   }
 }

@@ -1,0 +1,11 @@
+{
+  "name": "@sailsight/braces",
+  "version": "3.0.3-sailsight.1",
+  "private": true,
+  "description": "SailSight's depth-bounded fork of micromatch/braces 3.0.3",
+  "license": "MIT",
+  "main": "index.js",
+  "dependencies": {
+    "fill-range": "^7.1.1"
+  }
+}

@@ -57,6 +57,10 @@ TypeScript 5.9.3, ESLint 9.39.5 and the parent-resolved Microsoft.OpenApi 2.x ar
 
 Verification commands: `dotnet test SailSight.Api.Tests/SailSight.Api.Tests.csproj -p:SkipTypeScriptGeneration=true`, `npm run gen:api`, `npm run typecheck`, `npm run lint`, frontend/API container builds, `npm audit`, transitive NuGet audit and Trivy image scans. Runtime regression scripts are in `scripts/security-integration.py`, `scripts/upload-boundary.py`, and `scripts/ingestion-workload.py`; they create disposable data and require the documented local test environment variables/files in their source. Never target a production database.
 
+The web dependency tree overrides `braces` with a private, checked-in fork for GHSA-vfj7-8cjw-p6xm. It bounds brace/parenthesis nesting at 128 and validates supplied ASTs before recursive traversal. [Fork provenance and maintenance](../../SailSight.Web/vendor/braces/README.md) identify the upstream archive, retained license, and patch. `npm run test:security` checks compatibility, excessive nesting and actual ESLint/micromatch resolution; the security workflow runs it before the full npm audit. Replace the fork when an upstream fix passes these regressions. No advisories are exempted.
+
+The API runtime stage updates Ubuntu OpenSSL packages and verifies they are at least `3.0.13-0ubuntu3.16` before restoring its non-root user. The final web image removes npm and npx, including their unused bundled dependencies; its entry point invokes Node directly. Build and development stages retain npm. Container scans finish independently (`fail-fast: false`), and both dependency audits run even when another validation step fails after successful dependency installation.
+
 ## Historical verification (2026-09-10)
 
 The following results describe the original security implementation only. Rerun the relevant checks against the checkout and deployment under review before treating them as current evidence. Targets at that time included Next 16.3.4, React 19.3.0, Node 26.8.2, ECharts 6.1.0, Tailwind 4.3.3, PostCSS 8.5.28, .NET runtime/framework 10.0.12 and SDK 10.0.401; host verification used SDK 10.0.400/Node 24.19.0.
