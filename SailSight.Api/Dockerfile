@@ -15,7 +15,7 @@ EXPOSE 8080
 
 
 # This stage is used to build the service project
-FROM mcr.microsoft.com/dotnet/sdk:10.0.401@sha256:2fa828c68761b1b8c23d7662dc134421b9d3b59fe1425fdbc80804e390cdb24d AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100@sha256:65f3c7c6a25a239ab3e6719f2896147e7b68242ff2d8818dd70498bde6ef8bea AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["SailSight.Api/SailSight.Api.csproj", "SailSight.Api/"]
